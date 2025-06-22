@@ -25,10 +25,16 @@ main :: proc() {
 	defer glfw.Terminate()
 
 	{ 	// create window
+		glfw.WindowHint(glfw.CLIENT_API, glfw.NO_API)
+		glfw.WindowHint(glfw.RESIZABLE, false)
 		gc.window = glfw.CreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nil, nil)
 		if gc.window == nil {
 			panic("glfw.CreateWindow failed")
 		}
+	}
+	defer {
+		glfw.DestroyWindow(gc.window)
+		gc.window = nil
 	}
 }
 
