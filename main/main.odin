@@ -61,6 +61,8 @@ main :: proc() {
     }
   }
 
+  init_renderer()
+
   // main loop
   for !glfw.WindowShouldClose(gc.window) {
     glfw.PollEvents()
