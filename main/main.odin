@@ -8,6 +8,7 @@ import vk "vendor:vulkan"
 WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
 APP_NAME :: "Flectris"
+ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
 
 GlobalContext :: struct {
   window:      glfw.WindowHandle,
@@ -55,6 +56,8 @@ main :: proc() {
       pApplicationInfo        = &application_info,
       enabledExtensionCount   = cast(u32)len(glfw_required_instance_extensions),
       ppEnabledExtensionNames = raw_data(glfw_required_instance_extensions),
+      enabledLayerCount       = cast(u32)len(ENABLED_LAYERS),
+      ppEnabledLayerNames     = raw_data(ENABLED_LAYERS),
     }
     if vk.CreateInstance(&instance_create_info, nil, &gc.vk_instance) != .SUCCESS {
       panic("create instance failed")

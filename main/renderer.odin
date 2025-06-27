@@ -85,3 +85,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
   return renderer
 }
+
+deinit_renderer :: proc(renderer: ^Renderer) {
+  vk.DestroyDevice(renderer.device, nil)
+}
