@@ -9,7 +9,7 @@ WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
 APP_NAME :: "Flectris"
 ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
-
+REQUIRED_EXTENSIONS := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME}
 GlobalContext :: struct {
   window:      glfw.WindowHandle,
   vk_surface:  vk.SurfaceKHR,
@@ -63,7 +63,8 @@ main :: proc() {
       enabledLayerCount       = cast(u32)len(ENABLED_LAYERS),
       ppEnabledLayerNames     = raw_data(ENABLED_LAYERS),
     }
-    if vk.CreateInstance(&instance_create_info, nil, &gc.vk_instance) != .SUCCESS {
+    if err := vk.CreateInstance(&instance_create_info, nil, &gc.vk_instance); err != .SUCCESS {
+      fmt.eprintln(err)
       panic("create instance failed")
     }
   }
@@ -74,7 +75,6 @@ main :: proc() {
       panic("create vk khr window surface failed")
     }
   }
-  defer vk.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
 
   init_renderer()
 
