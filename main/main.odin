@@ -12,6 +12,7 @@ ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
 
 GlobalContext :: struct {
   window:      glfw.WindowHandle,
+  vk_surface:  vk.SurfaceKHR,
   vk_instance: vk.Instance,
 }
 gc: GlobalContext
@@ -51,6 +52,9 @@ main :: proc() {
       apiVersion         = vk.API_VERSION_1_3,
     }
     glfw_required_instance_extensions := glfw.GetRequiredInstanceExtensions()
+    if len(glfw_required_instance_extensions) == 0 {
+      panic("get required instance extensions failed - can't present to a window surface on this system")
+    }
     instance_create_info := vk.InstanceCreateInfo {
       sType                   = .INSTANCE_CREATE_INFO,
       pApplicationInfo        = &application_info,
@@ -63,6 +67,14 @@ main :: proc() {
       panic("create instance failed")
     }
   }
+
+  {   // create Vulkan WSI surface
+    res := glfw.CreateWindowSurface(gc.vk_instance, gc.window, nil, &gc.vk_surface)
+    if res != .SUCCESS {
+      panic("create vk khr window surface failed")
+    }
+  }
+  defer vk.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
 
   init_renderer()
 

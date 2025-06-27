@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "vendor:glfw"
 import vk "vendor:vulkan"
 
 Renderer :: struct {
@@ -48,8 +49,13 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
     found := false
     for queue_family_properties, index in queue_families_properties {
-      both_supported := vk.QueueFlags{.GRAPHICS, .TRANSFER} <= queue_family_properties.queueFlags
-      if !found && both_supported {
+      graphics_and_transfer_supported := vk.QueueFlags{.GRAPHICS, .TRANSFER} <= queue_family_properties.queueFlags
+      present_supported := glfw.GetPhysicalDevicePresentationSupport(
+        gc.vk_instance,
+        renderer.physical_device,
+        cast(u32)index,
+      )
+      if !found && graphics_and_transfer_supported && present_supported {
         renderer.queue_family_index = cast(u32)index
         found = true
       }
