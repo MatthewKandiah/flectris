@@ -2,6 +2,7 @@
 Tetris but you can pick your tileset.
 
 ## Plan
-- Make a sensible window
+- Get swapchain images & create image views
+- Framebuffer ?
 - Draw a triangle
 - Draw textured quads -> nearest-neighbour filtering
