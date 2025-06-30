@@ -5,11 +5,14 @@ import "vendor:glfw"
 import vk "vendor:vulkan"
 
 Renderer :: struct {
-  physical_device:    vk.PhysicalDevice,
-  queue_family_index: u32,
-  queue:              vk.Queue,
-  device:             vk.Device,
-  swapchain:          vk.SwapchainKHR,
+  physical_device:        vk.PhysicalDevice,
+  queue_family_index:     u32,
+  queue:                  vk.Queue,
+  device:                 vk.Device,
+  swapchain:              vk.SwapchainKHR,
+  swapchain_images:       []vk.Image,
+  swapchain_image_views:  []vk.ImageView,
+  swapchain_image_format: vk.Format,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -185,12 +188,59 @@ init_renderer :: proc() -> (renderer: Renderer) {
     if res != .SUCCESS {
       panic("failed to create swapchain")
     }
+    renderer.swapchain_image_format = surface_image_format.format
+  }
+
+  {   // make swapchain images
+    count: u32
+    res := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, nil)
+    if res != .SUCCESS {
+      panic("failed to get swapchain images count")
+    }
+    renderer.swapchain_images = make([]vk.Image, count)
+    res2 := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, raw_data(renderer.swapchain_images))
+    if res2 != .SUCCESS {
+      panic("failed to get swapchain images")
+    }
+    // TODO-Matt:  All presentable images are initially
+    // in the VK_IMAGE_LAYOUT_UNDEFINED layout, thus before using presentable images, the application must transition them to a valid layout for the intended use.
+    // I think we'll want to transition to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+  }
+
+  {   // make swapchain image views
+    renderer.swapchain_image_views = make([]vk.ImageView, cast(u32)len(renderer.swapchain_images))
+    for i in 0 ..< len(renderer.swapchain_images) {
+      create_info := vk.ImageViewCreateInfo {
+        sType = .IMAGE_VIEW_CREATE_INFO,
+        flags = {},
+        image = renderer.swapchain_images[i],
+        viewType = .D2,
+        format = renderer.swapchain_image_format,
+        components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
+        subresourceRange = {
+          aspectMask = vk.ImageAspectFlags{.COLOR},
+          baseMipLevel = 0,
+          levelCount = 1,
+          baseArrayLayer = 0,
+          layerCount = 1,
+        },
+      }
+      res := vk.CreateImageView(renderer.device, &create_info, nil, &renderer.swapchain_image_views[i])
+      if res != .SUCCESS {
+        panic("failed to create swapchain image views")
+      }
+    }
   }
 
   return renderer
 }
 
 deinit_renderer :: proc(renderer: ^Renderer) {
+  for image_view in renderer.swapchain_image_views {
+    vk.DestroyImageView(renderer.device, image_view, nil)
+  }
+  delete(renderer.swapchain_image_views)
+  delete(renderer.swapchain_images)
   vk.DestroySwapchainKHR(renderer.device, renderer.swapchain, nil)
   vk.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
   vk.DestroyDevice(renderer.device, nil)
