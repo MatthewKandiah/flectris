@@ -2,6 +2,7 @@ package main
 
 import "base:runtime"
 import "core:fmt"
+import "core:math/linalg/glsl"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
@@ -16,6 +17,17 @@ GlobalContext :: struct {
   vk_instance: vk.Instance,
 }
 gc: GlobalContext
+
+Vertex :: struct {
+  pos:    glsl.vec2,
+  colour: glsl.vec3,
+}
+
+vertices :: []Vertex {
+  {{-0.5, -0.5}, {1, 0, 0}}, //
+  {{0, 0.5}, {0, 1, 0}}, //
+  {{0.5, -0.5}, {0, 0, 1}}, //
+}
 
 main :: proc() {
   {   // glfw init
