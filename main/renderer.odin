@@ -13,6 +13,8 @@ Renderer :: struct {
   swapchain_images:       []vk.Image,
   swapchain_image_views:  []vk.ImageView,
   swapchain_image_format: vk.Format,
+  vertex_buffer:          vk.Buffer,
+  vertex_buffer_memory:   vk.DeviceMemory,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -232,16 +234,68 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
   }
 
+  {   // create vertex buffer
+    create_info := vk.BufferCreateInfo {
+      sType       = .BUFFER_CREATE_INFO,
+      flags       = {},
+      size        = cast(vk.DeviceSize)(size_of(Vertex) * len(vertices)),
+      usage       = {.VERTEX_BUFFER},
+      sharingMode = .EXCLUSIVE,
+    }
+    res := vk.CreateBuffer(renderer.device, &create_info, nil, &renderer.vertex_buffer)
+    if res != .SUCCESS {
+      panic("failed to create vertex buffer")
+    }
+  }
+
+  {   // allocate vertex buffer memory and bind it
+    memory_requirements: vk.MemoryRequirements
+    vk.GetBufferMemoryRequirements(renderer.device, renderer.vertex_buffer, &memory_requirements)
+
+    memory_properties: vk.PhysicalDeviceMemoryProperties
+    vk.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
+    desired_memory_type_properties := vk.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
+    memory_type_index := -1
+    for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
+      physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
+      supports_desired_memory_properties := desired_memory_type_properties <= memory_type.propertyFlags
+      if supports_desired_memory_properties && physical_device_supports_resource_type {
+        memory_type_index = idx
+        break
+      }
+    }
+    if memory_type_index == -1 {
+      panic("failed to find a suitable memory type for vertex buffer allocation")
+    }
+
+    allocate_info := vk.MemoryAllocateInfo {
+      sType           = .MEMORY_ALLOCATE_INFO,
+      allocationSize  = memory_requirements.size,
+      memoryTypeIndex = cast(u32)memory_type_index,
+    }
+    res := vk.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.vertex_buffer_memory)
+    if res != .SUCCESS {
+      panic("failed to allocate vertex buffer memory")
+    }
+
+    bind_res := vk.BindBufferMemory(renderer.device, renderer.vertex_buffer, renderer.vertex_buffer_memory, 0)
+    if bind_res != .SUCCESS {
+      panic("failed to bind vertex buffer memory")
+    }
+  }
+
   return renderer
 }
 
-deinit_renderer :: proc(renderer: ^Renderer) {
-  for image_view in renderer.swapchain_image_views {
-    vk.DestroyImageView(renderer.device, image_view, nil)
+deinit_renderer :: proc(using renderer: ^Renderer) {
+  vk.DestroyBuffer(device, vertex_buffer, nil)
+  vk.FreeMemory(device, vertex_buffer_memory, nil)
+  for image_view in swapchain_image_views {
+    vk.DestroyImageView(device, image_view, nil)
   }
-  delete(renderer.swapchain_image_views)
-  delete(renderer.swapchain_images)
-  vk.DestroySwapchainKHR(renderer.device, renderer.swapchain, nil)
+  delete(swapchain_image_views)
+  delete(swapchain_images)
+  vk.DestroySwapchainKHR(device, swapchain, nil)
   vk.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
-  vk.DestroyDevice(renderer.device, nil)
+  vk.DestroyDevice(device, nil)
 }
