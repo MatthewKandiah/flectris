@@ -1,20 +1,22 @@
 package main
 
+import "base:intrinsics"
 import "core:fmt"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
 Renderer :: struct {
-  physical_device:        vk.PhysicalDevice,
-  queue_family_index:     u32,
-  queue:                  vk.Queue,
-  device:                 vk.Device,
-  swapchain:              vk.SwapchainKHR,
-  swapchain_images:       []vk.Image,
-  swapchain_image_views:  []vk.ImageView,
-  swapchain_image_format: vk.Format,
-  vertex_buffer:          vk.Buffer,
-  vertex_buffer_memory:   vk.DeviceMemory,
+  physical_device:             vk.PhysicalDevice,
+  queue_family_index:          u32,
+  queue:                       vk.Queue,
+  device:                      vk.Device,
+  swapchain:                   vk.SwapchainKHR,
+  swapchain_images:            []vk.Image,
+  swapchain_image_views:       []vk.ImageView,
+  swapchain_image_format:      vk.Format,
+  vertex_buffer:               vk.Buffer,
+  vertex_buffer_memory:        vk.DeviceMemory,
+  vertex_buffer_memory_mapped: rawptr,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -284,11 +286,32 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
   }
 
+  {   // map vertex buffer memory
+    res := vk.MapMemory(
+      renderer.device,
+      renderer.vertex_buffer_memory,
+      0,
+      cast(vk.DeviceSize)vk.WHOLE_SIZE,
+      {},
+      &renderer.vertex_buffer_memory_mapped,
+    )
+  }
+
+  {   // copy vertex data into vertex buffer
+    intrinsics.mem_copy_non_overlapping(
+      renderer.vertex_buffer_memory_mapped,
+      raw_data(vertices),
+      size_of(Vertex) * len(vertices),
+    )
+  }
+
   return renderer
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
   vk.DestroyBuffer(device, vertex_buffer, nil)
+  renderer.vertex_buffer_memory_mapped = nil
+  vk.UnmapMemory(device, vertex_buffer_memory)
   vk.FreeMemory(device, vertex_buffer_memory, nil)
   for image_view in swapchain_image_views {
     vk.DestroyImageView(device, image_view, nil)
