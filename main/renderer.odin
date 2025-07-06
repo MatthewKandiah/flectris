@@ -24,6 +24,7 @@ Renderer :: struct {
   fragment_shader_module:      vk.ShaderModule,
   vertex_shader_module:        vk.ShaderModule,
   graphics_pipeline:           vk.Pipeline,
+  surface_extent:              vk.Extent2D,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -179,6 +180,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
     surface_image_format := desired_format if desired_format_supported else supported_formats[0]
 
+    renderer.surface_extent = surface_capabilities.currentExtent
+
     create_info := vk.SwapchainCreateInfoKHR {
       sType            = .SWAPCHAIN_CREATE_INFO_KHR,
       flags            = vk.SwapchainCreateFlagsKHR{},
@@ -186,7 +189,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
       minImageCount    = surface_capabilities.minImageCount,
       imageFormat      = surface_image_format.format,
       imageColorSpace  = surface_image_format.colorSpace,
-      imageExtent      = surface_capabilities.currentExtent,
+      imageExtent      = renderer.surface_extent,
       imageArrayLayers = 1,
       imageUsage       = vk.ImageUsageFlags{.COLOR_ATTACHMENT},
       imageSharingMode = .EXCLUSIVE,
@@ -368,22 +371,70 @@ init_renderer :: proc() -> (renderer: Renderer) {
       fragment_shader_stage_create_info,
     }
 
+    vertex_input_state_create_info := vk.PipelineVertexInputStateCreateInfo {
+      sType                           = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      flags                           = {},
+      vertexBindingDescriptionCount   = 1,
+      pVertexBindingDescriptions      = &vertex_input_binding_description,
+      vertexAttributeDescriptionCount = cast(u32)len(vertex_input_attribute_descriptions),
+      pVertexAttributeDescriptions    = raw_data(vertex_input_attribute_descriptions),
+    }
+
+    input_assembly_state_create_info := vk.PipelineInputAssemblyStateCreateInfo {
+      sType    = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+      flags    = {},
+      topology = .TRIANGLE_LIST,
+    }
+
+    viewport := vk.Viewport {
+      x        = 0,
+      y        = 0,
+      width    = cast(f32)renderer.surface_extent.width,
+      height   = cast(f32)renderer.surface_extent.height,
+      minDepth = 0,
+      maxDepth = 1,
+    }
+    scissor := vk.Rect2D {
+      offset = {x = 0, y = 0},
+      extent = renderer.surface_extent,
+    }
+    viewport_state_create_info := vk.PipelineViewportStateCreateInfo {
+      sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+      viewportCount = 1,
+      pViewports    = &viewport,
+      scissorCount  = 1,
+      pScissors     = &scissor,
+    }
+
+    rasterization_state_create_info := vk.PipelineRasterizationStateCreateInfo {
+      sType            = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      depthClampEnable = false,
+      polygonMode      = .FILL,
+      cullMode         = {.BACK},
+      frontFace        = .CLOCKWISE,
+      lineWidth        = 1,
+    }
+
+    multisample_state_create_info := vk.PipelineMultisampleStateCreateInfo {
+      sType                = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+      sampleShadingEnable  = false,
+      rasterizationSamples = vk.SampleCountFlags{._1},
+    }
+
     create_info := vk.GraphicsPipelineCreateInfo {
-      sType      = .GRAPHICS_PIPELINE_CREATE_INFO,
-      flags      = {},
-      stageCount = cast(u32)len(pipeline_shader_stages),
-      pStages    = raw_data(pipeline_shader_stages),
-      // NEXT
-      // pVertexInputState = TODO,
-      // pInputAssemblyState = TODO,
-      // pViewportState = TODO,
-      // pRasterizationState = ToDo,
-      // pMultisampleState = TODO,
-      // pDepthStencilState = TODO,
-      // pColorBlendState = TODO,
-      // layout = TODO,
+      sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
+      flags               = {},
+      stageCount          = cast(u32)len(pipeline_shader_stages),
+      pStages             = raw_data(pipeline_shader_stages),
+      pVertexInputState   = &vertex_input_state_create_info,
+      pInputAssemblyState = &input_assembly_state_create_info,
+      pViewportState      = &viewport_state_create_info,
+      pRasterizationState = &rasterization_state_create_info,
+      pMultisampleState   = &multisample_state_create_info,
+      pColorBlendState    = nil,
+      // layout = // NEXT TODO - 14.2.2 in the spec,
       // renderPass = TODO,
-      subpass    = 0,
+      subpass             = 0,
     }
     res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
   }
