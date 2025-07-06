@@ -2,7 +2,9 @@
 Tetris but you can pick your tileset.
 
 ## Plan
-- Get swapchain images & create image views
-- Framebuffer ?
+- write simple vertex and fragment shaders
+- create shader modules for them
+- create pipeline shader stages for them
+- do the rest of the graphics pipeline setup...
 - Draw a triangle
 - Draw textured quads -> nearest-neighbour filtering

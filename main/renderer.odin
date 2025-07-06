@@ -2,8 +2,12 @@ package main
 
 import "base:intrinsics"
 import "core:fmt"
+import "core:os"
 import "vendor:glfw"
 import vk "vendor:vulkan"
+
+VERTEX_SHADER_PATH :: "vert.spv"
+FRAGMENT_SHADER_PATH :: "frag.spv"
 
 Renderer :: struct {
   physical_device:             vk.PhysicalDevice,
@@ -17,6 +21,9 @@ Renderer :: struct {
   vertex_buffer:               vk.Buffer,
   vertex_buffer_memory:        vk.DeviceMemory,
   vertex_buffer_memory_mapped: rawptr,
+  fragment_shader_module:      vk.ShaderModule,
+  vertex_shader_module:        vk.ShaderModule,
+  graphics_pipeline:           vk.Pipeline,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -305,10 +312,87 @@ init_renderer :: proc() -> (renderer: Renderer) {
     )
   }
 
+  {   // create vertex shader module
+    data, err := os.read_entire_file_from_filename_or_err(VERTEX_SHADER_PATH)
+    if err != nil {
+      fmt.eprintln("Error reading vertex shader file", err)
+      panic("Failed to read vertex shader file")
+    }
+    create_info := vk.ShaderModuleCreateInfo {
+      sType    = .SHADER_MODULE_CREATE_INFO,
+      codeSize = len(data),
+      pCode    = cast(^u32)raw_data(data),
+    }
+    res := vk.CreateShaderModule(renderer.device, &create_info, nil, &renderer.vertex_shader_module)
+    if res != .SUCCESS {
+      panic("failed to create vertex shader module")
+    }
+  }
+
+  {   // create fragment shader module
+    data, err := os.read_entire_file_from_filename_or_err(FRAGMENT_SHADER_PATH)
+    if err != nil {
+      fmt.eprintln("Error reading fragment shader file", err)
+      panic("Failed to read fragment shader file")
+    }
+    create_info := vk.ShaderModuleCreateInfo {
+      sType    = .SHADER_MODULE_CREATE_INFO,
+      codeSize = len(data),
+      pCode    = cast(^u32)raw_data(data),
+    }
+    res := vk.CreateShaderModule(renderer.device, &create_info, nil, &renderer.fragment_shader_module)
+    if res != .SUCCESS {
+      panic("failed to create fragment shader module")
+    }
+  }
+
+  {   // create graphics pipeline
+    vertex_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
+      sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+      flags  = {},
+      stage  = {.VERTEX},
+      module = renderer.vertex_shader_module,
+      pName  = "main",
+    }
+
+    fragment_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
+      sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+      flags  = {},
+      stage  = {.FRAGMENT},
+      module = renderer.fragment_shader_module,
+      pName  = "main",
+    }
+
+    pipeline_shader_stages := []vk.PipelineShaderStageCreateInfo {
+      vertex_shader_stage_create_info,
+      fragment_shader_stage_create_info,
+    }
+
+    create_info := vk.GraphicsPipelineCreateInfo {
+      sType      = .GRAPHICS_PIPELINE_CREATE_INFO,
+      flags      = {},
+      stageCount = cast(u32)len(pipeline_shader_stages),
+      pStages    = raw_data(pipeline_shader_stages),
+      // NEXT
+      // pVertexInputState = TODO,
+      // pInputAssemblyState = TODO,
+      // pViewportState = TODO,
+      // pRasterizationState = ToDo,
+      // pMultisampleState = TODO,
+      // pDepthStencilState = TODO,
+      // pColorBlendState = TODO,
+      // layout = TODO,
+      // renderPass = TODO,
+      subpass    = 0,
+    }
+    res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
+  }
+
   return renderer
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
+  vk.DestroyShaderModule(device, vertex_shader_module, nil)
   vk.DestroyBuffer(device, vertex_buffer, nil)
   renderer.vertex_buffer_memory_mapped = nil
   vk.UnmapMemory(device, vertex_buffer_memory)
