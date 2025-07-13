@@ -421,6 +421,25 @@ init_renderer :: proc() -> (renderer: Renderer) {
       rasterizationSamples = vk.SampleCountFlags{._1},
     }
 
+    pipeline_layout: vk.PipelineLayout
+    pipeline_layout_create_info := vk.PipelineLayoutCreateInfo {
+        sType = .PIPELINE_LAYOUT_CREATE_INFO,
+        flags = {},
+        setLayoutCount = 0,
+        pSetLayouts = nil,
+        pushConstantRangeCount = 0,
+        pPushConstantRanges = nil,
+    }
+    pipeline_layout_create_res := vk.CreatePipelineLayout(
+        renderer.device,
+        &pipeline_layout_create_info,
+        nil,
+        &pipeline_layout,
+    )
+    if pipeline_layout_create_res != .SUCCESS {
+        panic("failed to create pipeline layout")
+    }
+
     create_info := vk.GraphicsPipelineCreateInfo {
       sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
       flags               = {},
@@ -432,7 +451,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pRasterizationState = &rasterization_state_create_info,
       pMultisampleState   = &multisample_state_create_info,
       pColorBlendState    = nil,
-      // layout = // NEXT TODO - 14.2.2 in the spec,
+      layout = pipeline_layout,
       // renderPass = TODO,
       subpass             = 0,
     }
