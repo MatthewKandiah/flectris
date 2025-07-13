@@ -25,6 +25,7 @@ Renderer :: struct {
   vertex_shader_module:        vk.ShaderModule,
   graphics_pipeline:           vk.Pipeline,
   surface_extent:              vk.Extent2D,
+  command_pool:                vk.CommandPool,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -253,6 +254,18 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
   }
 
+  {   // create command pool
+    create_info := vk.CommandPoolCreateInfo {
+      sType            = .COMMAND_POOL_CREATE_INFO,
+      flags            = {.RESET_COMMAND_BUFFER},
+      queueFamilyIndex = renderer.queue_family_index,
+    }
+    res := vk.CreateCommandPool(renderer.device, &create_info, nil, &renderer.command_pool)
+    if res != .SUCCESS {
+      panic("failed to create command pool")
+    }
+  }
+
   {   // create vertex buffer
     create_info := vk.BufferCreateInfo {
       sType       = .BUFFER_CREATE_INFO,
@@ -469,6 +482,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
+  vk.DestroyCommandPool(device, command_pool, nil)
   vk.DestroyShaderModule(device, vertex_shader_module, nil)
   vk.DestroyBuffer(device, vertex_buffer, nil)
   renderer.vertex_buffer_memory_mapped = nil
