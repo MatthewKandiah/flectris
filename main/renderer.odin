@@ -26,6 +26,7 @@ Renderer :: struct {
   graphics_pipeline:           vk.Pipeline,
   surface_extent:              vk.Extent2D,
   command_pool:                vk.CommandPool,
+  command_buffer:              vk.CommandBuffer,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -266,6 +267,19 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
   }
 
+  {   // allocate a command buffer
+    allocate_info := vk.CommandBufferAllocateInfo {
+      sType              = .COMMAND_BUFFER_ALLOCATE_INFO,
+      commandPool        = renderer.command_pool,
+      level              = .PRIMARY,
+      commandBufferCount = 1,
+    }
+    res := vk.AllocateCommandBuffers(renderer.device, &allocate_info, &renderer.command_buffer)
+    if res != .SUCCESS {
+      panic("failed to allocate command buffer")
+    }
+  }
+
   {   // create vertex buffer
     create_info := vk.BufferCreateInfo {
       sType       = .BUFFER_CREATE_INFO,
@@ -499,9 +513,8 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
-    fmt.println("hello drawing")
-    // allocate a command buffer
-    // record our draw command
-    // submit our draw command
-    // synchronisation?
+  // TODO_NEXT - use the command buffer we've just allocated to record draw commands
+  // record our draw command
+  // submit our draw command
+  // synchronisation?
 }
