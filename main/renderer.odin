@@ -497,3 +497,11 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
   vk.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
   vk.DestroyDevice(device, nil)
 }
+
+draw_frame :: proc(renderer: ^Renderer) {
+    fmt.println("hello drawing")
+    // allocate a command buffer
+    // record our draw command
+    // submit our draw command
+    // synchronisation?
+}

@@ -83,11 +83,13 @@ main :: proc() {
     }
   }
 
-  init_renderer()
+  renderer := init_renderer()
 
   // main loop
   for !glfw.WindowShouldClose(gc.window) {
     glfw.PollEvents()
+    // imagine a update game state
+    draw_frame(&renderer)
   }
 }
 
