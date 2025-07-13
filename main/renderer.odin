@@ -90,8 +90,15 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pQueuePriorities = raw_data(priorities),
     }
 
+    dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeatures {
+      sType            = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+      pNext            = nil,
+      dynamicRendering = true,
+    }
+
     create_info := vk.DeviceCreateInfo {
       sType                   = .DEVICE_CREATE_INFO,
+      pNext                   = &dynamic_rendering_features,
       queueCreateInfoCount    = 1,
       pQueueCreateInfos       = &queue_create_info,
       enabledExtensionCount   = cast(u32)len(REQUIRED_EXTENSIONS),
@@ -423,21 +430,21 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
     pipeline_layout: vk.PipelineLayout
     pipeline_layout_create_info := vk.PipelineLayoutCreateInfo {
-        sType = .PIPELINE_LAYOUT_CREATE_INFO,
-        flags = {},
-        setLayoutCount = 0,
-        pSetLayouts = nil,
-        pushConstantRangeCount = 0,
-        pPushConstantRanges = nil,
+      sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
+      flags                  = {},
+      setLayoutCount         = 0,
+      pSetLayouts            = nil,
+      pushConstantRangeCount = 0,
+      pPushConstantRanges    = nil,
     }
     pipeline_layout_create_res := vk.CreatePipelineLayout(
-        renderer.device,
-        &pipeline_layout_create_info,
-        nil,
-        &pipeline_layout,
+      renderer.device,
+      &pipeline_layout_create_info,
+      nil,
+      &pipeline_layout,
     )
     if pipeline_layout_create_res != .SUCCESS {
-        panic("failed to create pipeline layout")
+      panic("failed to create pipeline layout")
     }
 
     create_info := vk.GraphicsPipelineCreateInfo {
@@ -451,8 +458,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pRasterizationState = &rasterization_state_create_info,
       pMultisampleState   = &multisample_state_create_info,
       pColorBlendState    = nil,
-      layout = pipeline_layout,
-      // renderPass = TODO,
+      layout              = pipeline_layout,
+      renderPass          = {},
       subpass             = 0,
     }
     res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)

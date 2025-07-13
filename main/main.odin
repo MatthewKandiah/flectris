@@ -10,7 +10,7 @@ WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
 APP_NAME :: "Flectris"
 ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
-REQUIRED_EXTENSIONS := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME}
+REQUIRED_EXTENSIONS := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME, vk.KHR_DYNAMIC_RENDERING_EXTENSION_NAME}
 GlobalContext :: struct {
   window:      glfw.WindowHandle,
   vk_surface:  vk.SurfaceKHR,
