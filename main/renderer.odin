@@ -18,6 +18,7 @@ Renderer :: struct {
   swapchain_images:            []vk.Image,
   swapchain_image_views:       []vk.ImageView,
   swapchain_image_format:      vk.Format,
+  swapchain_image_index:       u32,
   vertex_buffer:               vk.Buffer,
   vertex_buffer_memory:        vk.DeviceMemory,
   vertex_buffer_memory_mapped: rawptr,
@@ -513,8 +514,104 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
-  // TODO_NEXT - use the command buffer we've just allocated to record draw commands
-  // record our draw command
-  // submit our draw command
-  // synchronisation?
+  // TODO - bind graphics pipeline to command buffer here, or in init?
+  // TODO - bind vertex buffer to command buffer here, or in init?
+  // TODO - bind graphics pipeline in here, or in init?
+  {   // begin recording commands
+    begin_info := vk.CommandBufferBeginInfo {
+      sType = .COMMAND_BUFFER_BEGIN_INFO,
+      flags = {.ONE_TIME_SUBMIT},
+    }
+    res := vk.BeginCommandBuffer(renderer.command_buffer, &begin_info)
+    if res != .SUCCESS {
+      panic("failed to begin command buffer")
+    }
+  }
+
+  vk.CmdBindPipeline(
+    commandBuffer = renderer.command_buffer,
+    pipelineBindPoint = .GRAPHICS,
+    pipeline = renderer.graphics_pipeline,
+  )
+
+  offsets := []vk.DeviceSize{0}
+  vk.CmdBindVertexBuffers(
+    commandBuffer = renderer.command_buffer,
+    firstBinding = 0,
+    bindingCount = 1,
+    pBuffers = &renderer.vertex_buffer,
+    pOffsets = raw_data(offsets),
+  )
+
+  clear_value := vk.ClearColorValue {
+    float32 = [4]f32{0, 0, 0, 1},
+  }
+/*
+// TODO next -> work out which image layout to use
+// -> wtf loadOp and storeOp
+// -> put it on the rendering info
+// -> present command
+*/
+  color_attachment := vk.RenderingAttachmentInfo {
+    sType = .RENDERING_ATTACHMENT_INFO,
+    imageView = renderer.swapchain_image_views[renderer.swapchain_image_index],
+    //imageLayout = ??
+    resolveMode = {}, // NOTE - odin vk bindings have no enum value for NONE, guessing that is handled by empty bitset?
+    //loadOp
+    //storeOp
+    clearValue = vk.ClearValue{color = clear_value},
+  }
+
+  rendering_info := vk.RenderingInfo {
+    sType = .RENDERING_INFO,
+    renderArea = vk.Rect2D{offset = vk.Offset2D{0, 0}, extent = renderer.surface_extent},
+    layerCount = 1,
+    viewMask = 0,
+    //colorAttachmentCount
+    //pColorAttachments
+  }
+  vk.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
+
+  vk.CmdDraw(
+    commandBuffer = renderer.command_buffer,
+    vertexCount = cast(u32)len(vertices),
+    instanceCount = 1,
+    firstVertex = 0,
+    firstInstance = 0,
+  )
+
+  vk.CmdEndRendering(renderer.command_buffer)
+
+  {   // end recording commands
+    res := vk.EndCommandBuffer(renderer.command_buffer)
+    if res != .SUCCESS {
+      panic("failed to end command buffer")
+    }
+  }
+
+  {   // submit command
+    command_buffer_info := vk.CommandBufferSubmitInfo {
+      sType         = .COMMAND_BUFFER_SUBMIT_INFO,
+      commandBuffer = renderer.command_buffer,
+      deviceMask    = 0,
+    }
+    submit_info := vk.SubmitInfo {
+      sType                = .SUBMIT_INFO,
+      waitSemaphoreCount   = 0,
+      pWaitSemaphores      = nil,
+      pWaitDstStageMask    = nil,
+      commandBufferCount   = 1,
+      pCommandBuffers      = &renderer.command_buffer,
+      signalSemaphoreCount = 0,
+      pSignalSemaphores    = nil,
+    }
+    res := vk.QueueSubmit(
+      renderer.queue,
+      1,
+      &submit_info,
+      0, // TODO - add fence to synchronise with host
+    )
+  }
+
+  renderer.swapchain_image_index = (renderer.swapchain_image_index + 1) % cast(u32)len(renderer.swapchain_images)
 }
