@@ -18,7 +18,6 @@ Renderer :: struct {
   swapchain_images:            []vk.Image,
   swapchain_image_views:       []vk.ImageView,
   swapchain_image_format:      vk.Format,
-  swapchain_image_index:       u32,
   vertex_buffer:               vk.Buffer,
   vertex_buffer_memory:        vk.DeviceMemory,
   vertex_buffer_memory_mapped: rawptr,
@@ -28,6 +27,8 @@ Renderer :: struct {
   surface_extent:              vk.Extent2D,
   command_pool:                vk.CommandPool,
   command_buffer:              vk.CommandBuffer,
+  fence_acquire_next_image:    vk.Fence,
+  semaphore:                   vk.Semaphore,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -226,9 +227,6 @@ init_renderer :: proc() -> (renderer: Renderer) {
     if res2 != .SUCCESS {
       panic("failed to get swapchain images")
     }
-    // TODO-Matt:  All presentable images are initially
-    // in the VK_IMAGE_LAYOUT_UNDEFINED layout, thus before using presentable images, the application must transition them to a valid layout for the intended use.
-    // I think we'll want to transition to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
   }
 
   {   // make swapchain image views
@@ -493,10 +491,33 @@ init_renderer :: proc() -> (renderer: Renderer) {
     res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
   }
 
+  {   // create fence
+    create_info := vk.FenceCreateInfo {
+      sType = .FENCE_CREATE_INFO,
+      flags = {},
+    }
+    res := vk.CreateFence(renderer.device, &create_info, nil, &renderer.fence_acquire_next_image)
+    if res != .SUCCESS {
+      panic("failed to create fence")
+    }
+  }
+
+  {   // create  semaphore
+    create_info := vk.SemaphoreCreateInfo {
+      sType = .SEMAPHORE_CREATE_INFO,
+    }
+    res := vk.CreateSemaphore(renderer.device, &create_info, nil, &renderer.semaphore)
+    if res != .SUCCESS {
+      panic("failed to create semaphore")
+    }
+  }
+
   return renderer
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
+  vk.DestroySemaphore(device, semaphore, nil)
+  vk.DestroyFence(device, fence_acquire_next_image, nil)
   vk.DestroyCommandPool(device, command_pool, nil)
   vk.DestroyShaderModule(device, vertex_shader_module, nil)
   vk.DestroyBuffer(device, vertex_buffer, nil)
@@ -514,9 +535,28 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
-  // TODO - bind graphics pipeline to command buffer here, or in init?
-  // TODO - bind vertex buffer to command buffer here, or in init?
-  // TODO - bind graphics pipeline in here, or in init?
+  swapchain_image_index: u32
+  {   // get next swapchain image
+    res := vk.AcquireNextImageKHR(
+      renderer.device,
+      renderer.swapchain,
+      max(u64),
+      0,
+      renderer.fence_acquire_next_image,
+      &swapchain_image_index,
+    )
+    if res != .SUCCESS {
+      panic("failed to get next swapchain image")
+    }
+  }
+
+  {   // wait to acquire swapchain image
+    res := vk.WaitForFences(renderer.device, 1, &renderer.fence_acquire_next_image, true, max(u64))
+    if res != .SUCCESS {
+      panic("failed to wait for acquire image fence")
+    }
+  }
+
   {   // begin recording commands
     begin_info := vk.CommandBufferBeginInfo {
       sType = .COMMAND_BUFFER_BEGIN_INFO,
@@ -528,6 +568,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
   }
 
+  // DEBUG - between here and the END-DEBUG somthing is changing the state of our command buffer from recording to something else (probably invalid)
   vk.CmdBindPipeline(
     commandBuffer = renderer.command_buffer,
     pipelineBindPoint = .GRAPHICS,
@@ -564,7 +605,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       newLayout           = .COLOR_ATTACHMENT_OPTIMAL,
       srcQueueFamilyIndex = renderer.queue_family_index,
       dstQueueFamilyIndex = renderer.queue_family_index,
-      image               = renderer.swapchain_images[renderer.swapchain_image_index],
+      image               = renderer.swapchain_images[swapchain_image_index],
       subresourceRange    = subresource_range,
     }
     memory_barrier_to_present := vk.ImageMemoryBarrier {
@@ -575,7 +616,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       newLayout           = .PRESENT_SRC_KHR,
       srcQueueFamilyIndex = renderer.queue_family_index,
       dstQueueFamilyIndex = renderer.queue_family_index,
-      image               = renderer.swapchain_images[renderer.swapchain_image_index],
+      image               = renderer.swapchain_images[swapchain_image_index],
       subresourceRange    = subresource_range,
     }
     vk.CmdPipelineBarrier(
@@ -606,7 +647,7 @@ draw_frame :: proc(renderer: ^Renderer) {
 
   color_attachment := vk.RenderingAttachmentInfo {
     sType = .RENDERING_ATTACHMENT_INFO,
-    imageView = renderer.swapchain_image_views[renderer.swapchain_image_index],
+    imageView = renderer.swapchain_image_views[swapchain_image_index],
     imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
     resolveMode = {},
     loadOp = .DONT_CARE,
@@ -634,7 +675,27 @@ draw_frame :: proc(renderer: ^Renderer) {
 
   vk.CmdEndRendering(renderer.command_buffer)
 
-  // TODO present
+  // END-DEBUG
+  {   // end recording command buffer
+    res := vk.EndCommandBuffer(renderer.command_buffer)
+    if res != .SUCCESS {
+      panic("failed to end command buffer")
+    }
+  }
+
+  submit_info := vk.SubmitInfo {
+    sType              = .SUBMIT_INFO,
+    commandBufferCount = 1,
+    pCommandBuffers    = &renderer.command_buffer,
+  }
+  vk.QueueSubmit(
+    renderer.queue,
+    1,
+    &submit_info,
+    0, // TODO - fence to synchronise with queuepresent?
+  )
+
+  // vk.QueuePresentKHR()
 
   {   // end recording commands
     res := vk.EndCommandBuffer(renderer.command_buffer)
@@ -666,6 +727,4 @@ draw_frame :: proc(renderer: ^Renderer) {
       0, // TODO - add fence to synchronise with host
     )
   }
-
-  renderer.swapchain_image_index = (renderer.swapchain_image_index + 1) % cast(u32)len(renderer.swapchain_images)
 }
