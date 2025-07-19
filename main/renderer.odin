@@ -1,6 +1,7 @@
 package main
 
 import "base:intrinsics"
+import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "vendor:glfw"
@@ -105,8 +106,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pNext                   = &dynamic_rendering_features,
       queueCreateInfoCount    = 1,
       pQueueCreateInfos       = &queue_create_info,
-      enabledExtensionCount   = cast(u32)len(REQUIRED_EXTENSIONS),
-      ppEnabledExtensionNames = raw_data(REQUIRED_EXTENSIONS),
+      enabledExtensionCount   = cast(u32)len(REQUIRED_DEVICE_EXTENSIONS),
+      ppEnabledExtensionNames = raw_data(REQUIRED_DEVICE_EXTENSIONS),
     }
     res := vk.CreateDevice(renderer.physical_device, &create_info, nil, &renderer.device)
     if res != .SUCCESS {
@@ -276,6 +277,24 @@ init_renderer :: proc() -> (renderer: Renderer) {
     res := vk.AllocateCommandBuffers(renderer.device, &allocate_info, &renderer.command_buffer)
     if res != .SUCCESS {
       panic("failed to allocate command buffer")
+    }
+  }
+
+  {   // command buffer debug messenger
+    create_info := vk.DebugUtilsMessengerCreateInfoEXT {
+      sType           = .DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      flags           = {},
+      messageSeverity = {.ERROR, .WARNING, .INFO, .VERBOSE},
+      messageType     = {.GENERAL, .VALIDATION, .PERFORMANCE},
+      pfnUserCallback = on_command_buffer_debug_message,
+      pUserData       = nil,
+    }
+    if (vk.CreateDebugUtilsMessengerEXT == nil) {
+      panic("There's your problem")
+    }
+    res := vk.CreateDebugUtilsMessengerEXT(gc.vk_instance, &create_info, nil, &gc.vk_debug_messenger)
+    if res != .SUCCESS {
+      panic("failed to create command buffer debug messenger")
     }
   }
 
@@ -727,4 +746,18 @@ draw_frame :: proc(renderer: ^Renderer) {
       0, // TODO - add fence to synchronise with host
     )
   }
+}
+
+on_command_buffer_debug_message :: proc "c" (
+  messageSeverity: vk.DebugUtilsMessageSeverityFlagsEXT,
+  messageTypes: vk.DebugUtilsMessageTypeFlagsEXT,
+  pCallbackData: ^vk.DebugUtilsMessengerCallbackDataEXT,
+  pUserData: rawptr,
+) -> b32 {
+  context = runtime.default_context()
+  fmt.println(pCallbackData.pMessage)
+  fmt.println(pCallbackData.pObjects)
+  fmt.println(pCallbackData.objectCount)
+  fmt.println("------------")
+  return false
 }

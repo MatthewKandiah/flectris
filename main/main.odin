@@ -10,11 +10,13 @@ WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
 APP_NAME :: "Flectris"
 ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
-REQUIRED_EXTENSIONS := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME, vk.KHR_DYNAMIC_RENDERING_EXTENSION_NAME}
+REQUIRED_INSTANCE_EXTENSIONS := []cstring{vk.EXT_DEBUG_UTILS_EXTENSION_NAME}
+REQUIRED_DEVICE_EXTENSIONS := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME, vk.KHR_DYNAMIC_RENDERING_EXTENSION_NAME}
 GlobalContext :: struct {
-  window:      glfw.WindowHandle,
-  vk_surface:  vk.SurfaceKHR,
-  vk_instance: vk.Instance,
+  window:             glfw.WindowHandle,
+  vk_surface:         vk.SurfaceKHR,
+  vk_instance:        vk.Instance,
+  vk_debug_messenger: vk.DebugUtilsMessengerEXT,
 }
 gc: GlobalContext
 
@@ -50,6 +52,7 @@ main :: proc() {
 
   {   // initialise Vulkan instance
     vk.load_proc_addresses(get_proc_address)
+
     application_info := vk.ApplicationInfo {
       sType              = .APPLICATION_INFO,
       pApplicationName   = APP_NAME,
@@ -62,11 +65,21 @@ main :: proc() {
     if len(glfw_required_instance_extensions) == 0 {
       panic("get required instance extensions failed - can't present to a window surface on this system")
     }
+    all_required_instance_extensions := make(
+      []cstring,
+      len(glfw_required_instance_extensions) + len(REQUIRED_INSTANCE_EXTENSIONS),
+    )
+    for glfw_extension, i in glfw_required_instance_extensions {
+      all_required_instance_extensions[i] = glfw_extension
+    }
+    for other_extension, i in REQUIRED_INSTANCE_EXTENSIONS {
+      all_required_instance_extensions[len(glfw_required_instance_extensions) + i] = other_extension
+    }
     instance_create_info := vk.InstanceCreateInfo {
       sType                   = .INSTANCE_CREATE_INFO,
       pApplicationInfo        = &application_info,
-      enabledExtensionCount   = cast(u32)len(glfw_required_instance_extensions),
-      ppEnabledExtensionNames = raw_data(glfw_required_instance_extensions),
+      enabledExtensionCount   = cast(u32)len(all_required_instance_extensions),
+      ppEnabledExtensionNames = raw_data(all_required_instance_extensions),
       enabledLayerCount       = cast(u32)len(ENABLED_LAYERS),
       ppEnabledLayerNames     = raw_data(ENABLED_LAYERS),
     }
@@ -74,6 +87,8 @@ main :: proc() {
       fmt.eprintln(err)
       panic("create instance failed")
     }
+    vk.load_proc_addresses(get_proc_address) // found some extension methods weren't found if I don't call this again here
+    delete(all_required_instance_extensions)
   }
 
   {   // create Vulkan WSI surface
