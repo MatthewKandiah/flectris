@@ -546,19 +546,71 @@ draw_frame :: proc(renderer: ^Renderer) {
   clear_value := vk.ClearColorValue {
     float32 = [4]f32{0, 0, 0, 1},
   }
-/*
-// TODO next -> work out which image layout to use
-// -> wtf loadOp and storeOp
-// -> put it on the rendering info
-// -> present command
-*/
+
+  {   // memory barriers for image layout transitions
+    subresource_range := vk.ImageSubresourceRange {
+      aspectMask     = {.COLOR},
+      baseMipLevel   = 0,
+      levelCount     = 1,
+      baseArrayLayer = 0,
+      layerCount     = 1,
+    }
+
+    memory_barrier_to_write := vk.ImageMemoryBarrier {
+      sType               = .IMAGE_MEMORY_BARRIER,
+      srcAccessMask       = {},
+      dstAccessMask       = {.SHADER_WRITE},
+      oldLayout           = .UNDEFINED,
+      newLayout           = .COLOR_ATTACHMENT_OPTIMAL,
+      srcQueueFamilyIndex = renderer.queue_family_index,
+      dstQueueFamilyIndex = renderer.queue_family_index,
+      image               = renderer.swapchain_images[renderer.swapchain_image_index],
+      subresourceRange    = subresource_range,
+    }
+    memory_barrier_to_present := vk.ImageMemoryBarrier {
+      sType               = .IMAGE_MEMORY_BARRIER,
+      srcAccessMask       = {.SHADER_WRITE},
+      dstAccessMask       = {.COLOR_ATTACHMENT_READ},
+      oldLayout           = .COLOR_ATTACHMENT_OPTIMAL,
+      newLayout           = .PRESENT_SRC_KHR,
+      srcQueueFamilyIndex = renderer.queue_family_index,
+      dstQueueFamilyIndex = renderer.queue_family_index,
+      image               = renderer.swapchain_images[renderer.swapchain_image_index],
+      subresourceRange    = subresource_range,
+    }
+    vk.CmdPipelineBarrier(
+      commandBuffer = renderer.command_buffer,
+      srcStageMask = {.TOP_OF_PIPE},
+      dstStageMask = {.FRAGMENT_SHADER},
+      dependencyFlags = {},
+      imageMemoryBarrierCount = 1,
+      pImageMemoryBarriers = &memory_barrier_to_write,
+      memoryBarrierCount = 0,
+      pMemoryBarriers = nil,
+      bufferMemoryBarrierCount = 0,
+      pBufferMemoryBarriers = nil,
+    )
+    vk.CmdPipelineBarrier(
+      commandBuffer = renderer.command_buffer,
+      srcStageMask = {.FRAGMENT_SHADER},
+      dstStageMask = {.COLOR_ATTACHMENT_OUTPUT},
+      dependencyFlags = {},
+      imageMemoryBarrierCount = 1,
+      pImageMemoryBarriers = &memory_barrier_to_present,
+      memoryBarrierCount = 0,
+      pMemoryBarriers = nil,
+      bufferMemoryBarrierCount = 0,
+      pBufferMemoryBarriers = nil,
+    )
+  }
+
   color_attachment := vk.RenderingAttachmentInfo {
     sType = .RENDERING_ATTACHMENT_INFO,
     imageView = renderer.swapchain_image_views[renderer.swapchain_image_index],
-    //imageLayout = ??
-    resolveMode = {}, // NOTE - odin vk bindings have no enum value for NONE, guessing that is handled by empty bitset?
-    //loadOp
-    //storeOp
+    imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
+    resolveMode = {},
+    loadOp = .DONT_CARE,
+    storeOp = .STORE,
     clearValue = vk.ClearValue{color = clear_value},
   }
 
@@ -567,8 +619,8 @@ draw_frame :: proc(renderer: ^Renderer) {
     renderArea = vk.Rect2D{offset = vk.Offset2D{0, 0}, extent = renderer.surface_extent},
     layerCount = 1,
     viewMask = 0,
-    //colorAttachmentCount
-    //pColorAttachments
+    colorAttachmentCount = 1,
+    pColorAttachments = &color_attachment,
   }
   vk.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
 
@@ -581,6 +633,8 @@ draw_frame :: proc(renderer: ^Renderer) {
   )
 
   vk.CmdEndRendering(renderer.command_buffer)
+
+  // TODO present
 
   {   // end recording commands
     res := vk.EndCommandBuffer(renderer.command_buffer)
