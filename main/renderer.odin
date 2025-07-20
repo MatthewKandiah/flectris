@@ -703,35 +703,4 @@ draw_frame :: proc(renderer: ^Renderer) {
   )
 
   // vk.QueuePresentKHR()
-
-  {   // end recording commands
-    res := vk.EndCommandBuffer(renderer.command_buffer)
-    if res != .SUCCESS {
-      panic("failed to end command buffer")
-    }
-  }
-
-  {   // submit command
-    command_buffer_info := vk.CommandBufferSubmitInfo {
-      sType         = .COMMAND_BUFFER_SUBMIT_INFO,
-      commandBuffer = renderer.command_buffer,
-      deviceMask    = 0,
-    }
-    submit_info := vk.SubmitInfo {
-      sType                = .SUBMIT_INFO,
-      waitSemaphoreCount   = 0,
-      pWaitSemaphores      = nil,
-      pWaitDstStageMask    = nil,
-      commandBufferCount   = 1,
-      pCommandBuffers      = &renderer.command_buffer,
-      signalSemaphoreCount = 0,
-      pSignalSemaphores    = nil,
-    }
-    res := vk.QueueSubmit(
-      renderer.queue,
-      1,
-      &submit_info,
-      0, // TODO - add fence to synchronise with host
-    )
-  }
 }
