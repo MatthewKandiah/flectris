@@ -94,9 +94,15 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pQueuePriorities = raw_data(priorities),
     }
 
+    dynamic_rendering_local_read := vk.PhysicalDeviceDynamicRenderingLocalReadFeatures {
+      sType                     = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES,
+      pNext                     = nil,
+      dynamicRenderingLocalRead = true,
+    }
+
     dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeatures {
       sType            = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
-      pNext            = nil,
+      pNext            = &dynamic_rendering_local_read,
       dynamicRendering = true,
     }
 
@@ -105,8 +111,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pNext                   = &dynamic_rendering_features,
       queueCreateInfoCount    = 1,
       pQueueCreateInfos       = &queue_create_info,
-      enabledExtensionCount   = cast(u32)len(REQUIRED_EXTENSIONS),
-      ppEnabledExtensionNames = raw_data(REQUIRED_EXTENSIONS),
+      enabledExtensionCount   = cast(u32)len(REQUIRED_DEVICE_EXTENSIONS),
+      ppEnabledExtensionNames = raw_data(REQUIRED_DEVICE_EXTENSIONS),
     }
     res := vk.CreateDevice(renderer.physical_device, &create_info, nil, &renderer.device)
     if res != .SUCCESS {
@@ -569,6 +575,31 @@ draw_frame :: proc(renderer: ^Renderer) {
   }
 
   // DEBUG - between here and the END-DEBUG somthing is changing the state of our command buffer from recording to something else (probably invalid)
+  // thought - begin rendering before binding things, guess we're "binding to the active render pass"? If not that, what are we "binding" to?
+  clear_value := vk.ClearColorValue {
+    float32 = [4]f32{0, 0, 0, 1},
+  }
+
+  color_attachment := vk.RenderingAttachmentInfo {
+    sType = .RENDERING_ATTACHMENT_INFO,
+    imageView = renderer.swapchain_image_views[swapchain_image_index],
+    imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
+    resolveMode = {},
+    loadOp = .DONT_CARE,
+    storeOp = .STORE,
+    clearValue = vk.ClearValue{color = clear_value},
+  }
+
+  rendering_info := vk.RenderingInfo {
+    sType = .RENDERING_INFO,
+    renderArea = vk.Rect2D{offset = vk.Offset2D{0, 0}, extent = renderer.surface_extent},
+    layerCount = 1,
+    viewMask = 0,
+    colorAttachmentCount = 1,
+    pColorAttachments = &color_attachment,
+  }
+  vk.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
+
   vk.CmdBindPipeline(
     commandBuffer = renderer.command_buffer,
     pipelineBindPoint = .GRAPHICS,
@@ -583,10 +614,6 @@ draw_frame :: proc(renderer: ^Renderer) {
     pBuffers = &renderer.vertex_buffer,
     pOffsets = raw_data(offsets),
   )
-
-  clear_value := vk.ClearColorValue {
-    float32 = [4]f32{0, 0, 0, 1},
-  }
 
   {   // memory barriers for image layout transitions
     subresource_range := vk.ImageSubresourceRange {
@@ -644,26 +671,6 @@ draw_frame :: proc(renderer: ^Renderer) {
       pBufferMemoryBarriers = nil,
     )
   }
-
-  color_attachment := vk.RenderingAttachmentInfo {
-    sType = .RENDERING_ATTACHMENT_INFO,
-    imageView = renderer.swapchain_image_views[swapchain_image_index],
-    imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
-    resolveMode = {},
-    loadOp = .DONT_CARE,
-    storeOp = .STORE,
-    clearValue = vk.ClearValue{color = clear_value},
-  }
-
-  rendering_info := vk.RenderingInfo {
-    sType = .RENDERING_INFO,
-    renderArea = vk.Rect2D{offset = vk.Offset2D{0, 0}, extent = renderer.surface_extent},
-    layerCount = 1,
-    viewMask = 0,
-    colorAttachmentCount = 1,
-    pColorAttachments = &color_attachment,
-  }
-  vk.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
 
   vk.CmdDraw(
     commandBuffer = renderer.command_buffer,
