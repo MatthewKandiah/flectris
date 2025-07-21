@@ -482,6 +482,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
     create_info := vk.GraphicsPipelineCreateInfo {
       sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
+      // pNext = TODO - see VkPipelineRenderingCreateInfo "When a pipeline is created without a VkRenderPass, if the pNext chain of VkGraphicsPipelineCreateInfo includes this structure, it specifies the view mask and format of attachments used for rendering. If this structure is not specified, and the pipeline does not include a VkRenderPass, viewMask and colorAttachmentCount are 0"
       flags               = {},
       stageCount          = cast(u32)len(pipeline_shader_stages),
       pStages             = raw_data(pipeline_shader_stages),
