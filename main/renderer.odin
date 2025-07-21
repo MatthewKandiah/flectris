@@ -630,25 +630,23 @@ draw_frame :: proc(renderer: ^Renderer) {
     clearValue = vk.ClearValue{color = clear_value},
   }
 
-  {   // memory barriers for image layout transitions
-    subresource_range := vk.ImageSubresourceRange {
-      aspectMask     = {.COLOR},
-      baseMipLevel   = 0,
-      levelCount     = 1,
-      baseArrayLayer = 0,
-      layerCount     = 1,
-    }
-
+  {   // memory barrier transition to fragment shader output writable
     memory_barrier_to_write := vk.ImageMemoryBarrier {
-      sType               = .IMAGE_MEMORY_BARRIER,
-      srcAccessMask       = {},
-      dstAccessMask       = {.COLOR_ATTACHMENT_WRITE},
-      oldLayout           = .UNDEFINED,
-      newLayout           = .COLOR_ATTACHMENT_OPTIMAL,
+      sType = .IMAGE_MEMORY_BARRIER,
+      srcAccessMask = {},
+      dstAccessMask = {.COLOR_ATTACHMENT_WRITE},
+      oldLayout = .UNDEFINED,
+      newLayout = .COLOR_ATTACHMENT_OPTIMAL,
       srcQueueFamilyIndex = renderer.queue_family_index,
       dstQueueFamilyIndex = renderer.queue_family_index,
-      image               = renderer.swapchain_images[swapchain_image_index],
-      subresourceRange    = subresource_range,
+      image = renderer.swapchain_images[swapchain_image_index],
+      subresourceRange = vk.ImageSubresourceRange {
+        aspectMask = {.COLOR},
+        baseMipLevel = 0,
+        levelCount = 1,
+        baseArrayLayer = 0,
+        layerCount = 1,
+      },
     }
     vk.CmdPipelineBarrier(
       commandBuffer = renderer.command_buffer,
@@ -657,29 +655,6 @@ draw_frame :: proc(renderer: ^Renderer) {
       dependencyFlags = {.BY_REGION},
       imageMemoryBarrierCount = 1,
       pImageMemoryBarriers = &memory_barrier_to_write,
-      memoryBarrierCount = 0,
-      pMemoryBarriers = nil,
-      bufferMemoryBarrierCount = 0,
-      pBufferMemoryBarriers = nil,
-    )
-    memory_barrier_to_present := vk.ImageMemoryBarrier {
-      sType               = .IMAGE_MEMORY_BARRIER,
-      srcAccessMask       = {},
-      dstAccessMask       = {},
-      oldLayout           = .COLOR_ATTACHMENT_OPTIMAL,
-      newLayout           = .PRESENT_SRC_KHR,
-      srcQueueFamilyIndex = renderer.queue_family_index,
-      dstQueueFamilyIndex = renderer.queue_family_index,
-      image               = renderer.swapchain_images[swapchain_image_index],
-      subresourceRange    = subresource_range,
-    }
-    vk.CmdPipelineBarrier(
-      commandBuffer = renderer.command_buffer,
-      srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
-      dstStageMask = {.BOTTOM_OF_PIPE},
-      dependencyFlags = {},
-      imageMemoryBarrierCount = 1,
-      pImageMemoryBarriers = &memory_barrier_to_present,
       memoryBarrierCount = 0,
       pMemoryBarriers = nil,
       bufferMemoryBarrierCount = 0,
@@ -721,6 +696,38 @@ draw_frame :: proc(renderer: ^Renderer) {
   )
 
   vk.CmdEndRendering(renderer.command_buffer)
+
+  {   // memory barrier transition to presentable
+    memory_barrier_to_present := vk.ImageMemoryBarrier {
+      sType = .IMAGE_MEMORY_BARRIER,
+      srcAccessMask = {},
+      dstAccessMask = {},
+      oldLayout = .COLOR_ATTACHMENT_OPTIMAL,
+      newLayout = .PRESENT_SRC_KHR,
+      srcQueueFamilyIndex = renderer.queue_family_index,
+      dstQueueFamilyIndex = renderer.queue_family_index,
+      image = renderer.swapchain_images[swapchain_image_index],
+      subresourceRange = vk.ImageSubresourceRange {
+        aspectMask = {.COLOR},
+        baseMipLevel = 0,
+        levelCount = 1,
+        baseArrayLayer = 0,
+        layerCount = 1,
+      },
+    }
+    vk.CmdPipelineBarrier(
+      commandBuffer = renderer.command_buffer,
+      srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
+      dstStageMask = {.BOTTOM_OF_PIPE},
+      dependencyFlags = {},
+      imageMemoryBarrierCount = 1,
+      pImageMemoryBarriers = &memory_barrier_to_present,
+      memoryBarrierCount = 0,
+      pMemoryBarriers = nil,
+      bufferMemoryBarrierCount = 0,
+      pBufferMemoryBarriers = nil,
+    )
+  }
 
   {   // end recording command buffer
     res := vk.EndCommandBuffer(renderer.command_buffer)
