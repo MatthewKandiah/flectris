@@ -562,7 +562,6 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
-  fmt.println("draw_frame")
   {   // ensure previous frame finished before we start
     wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
     if wait_res != .SUCCESS {
@@ -612,7 +611,7 @@ draw_frame :: proc(renderer: ^Renderer) {
   }
 
   clear_value := vk.ClearColorValue {
-    float32 = [4]f32{0, 0, 0, 1},
+    float32 = [4]f32{1, 0, 1, 1},
   }
 
   color_attachment := vk.RenderingAttachmentInfo {
@@ -620,7 +619,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     imageView = renderer.swapchain_image_views[swapchain_image_index],
     imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
     resolveMode = {},
-    loadOp = .DONT_CARE,
+    loadOp = .CLEAR,
     storeOp = .STORE,
     clearValue = vk.ClearValue{color = clear_value},
   }
@@ -637,20 +636,9 @@ draw_frame :: proc(renderer: ^Renderer) {
     memory_barrier_to_write := vk.ImageMemoryBarrier {
       sType               = .IMAGE_MEMORY_BARRIER,
       srcAccessMask       = {},
-      dstAccessMask       = {.SHADER_WRITE},
+      dstAccessMask       = {},
       oldLayout           = .UNDEFINED,
       newLayout           = .COLOR_ATTACHMENT_OPTIMAL,
-      srcQueueFamilyIndex = renderer.queue_family_index,
-      dstQueueFamilyIndex = renderer.queue_family_index,
-      image               = renderer.swapchain_images[swapchain_image_index],
-      subresourceRange    = subresource_range,
-    }
-    memory_barrier_to_present := vk.ImageMemoryBarrier {
-      sType               = .IMAGE_MEMORY_BARRIER,
-      srcAccessMask       = {.SHADER_WRITE},
-      dstAccessMask       = {},
-      oldLayout           = .COLOR_ATTACHMENT_OPTIMAL,
-      newLayout           = .PRESENT_SRC_KHR,
       srcQueueFamilyIndex = renderer.queue_family_index,
       dstQueueFamilyIndex = renderer.queue_family_index,
       image               = renderer.swapchain_images[swapchain_image_index],
@@ -668,6 +656,17 @@ draw_frame :: proc(renderer: ^Renderer) {
       bufferMemoryBarrierCount = 0,
       pBufferMemoryBarriers = nil,
     )
+    memory_barrier_to_present := vk.ImageMemoryBarrier {
+      sType               = .IMAGE_MEMORY_BARRIER,
+      srcAccessMask       = {},
+      dstAccessMask       = {},
+      oldLayout           = .COLOR_ATTACHMENT_OPTIMAL,
+      newLayout           = .PRESENT_SRC_KHR,
+      srcQueueFamilyIndex = renderer.queue_family_index,
+      dstQueueFamilyIndex = renderer.queue_family_index,
+      image               = renderer.swapchain_images[swapchain_image_index],
+      subresourceRange    = subresource_range,
+    }
     vk.CmdPipelineBarrier(
       commandBuffer = renderer.command_buffer,
       srcStageMask = {.FRAGMENT_SHADER},
