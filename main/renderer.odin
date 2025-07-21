@@ -27,7 +27,7 @@ Renderer :: struct {
   surface_extent:              vk.Extent2D,
   command_pool:                vk.CommandPool,
   command_buffer:              vk.CommandBuffer,
-  semaphore_draw_finished:     vk.Semaphore,
+  semaphores_draw_finished:    []vk.Semaphore,
   fence_image_acquired:        vk.Fence,
   fence_frame_finished:        vk.Fence,
 }
@@ -502,14 +502,17 @@ init_renderer :: proc() -> (renderer: Renderer) {
     semaphore_create_info := vk.SemaphoreCreateInfo {
       sType = .SEMAPHORE_CREATE_INFO,
     }
-    draw_finished_semaphore_res := vk.CreateSemaphore(
-      renderer.device,
-      &semaphore_create_info,
-      nil,
-      &renderer.semaphore_draw_finished,
-    )
-    if draw_finished_semaphore_res != .SUCCESS {
-      panic("failed to create draw finished semaphore")
+    renderer.semaphores_draw_finished = make([]vk.Semaphore, len(renderer.swapchain_images))
+    for i in 0 ..< len(renderer.swapchain_images) {
+      draw_finished_semaphore_res := vk.CreateSemaphore(
+        renderer.device,
+        &semaphore_create_info,
+        nil,
+        &renderer.semaphores_draw_finished[i],
+      )
+      if draw_finished_semaphore_res != .SUCCESS {
+        panic("failed to create draw finished semaphore")
+      }
     }
 
     image_acquired_fence_create_info := vk.FenceCreateInfo {
@@ -542,7 +545,10 @@ init_renderer :: proc() -> (renderer: Renderer) {
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
-  vk.DestroySemaphore(device, semaphore_draw_finished, nil)
+  for i in 0 ..< len(swapchain_images) {
+    vk.DestroySemaphore(device, semaphores_draw_finished[i], nil)
+  }
+  delete(semaphores_draw_finished)
   vk.DestroyFence(device, fence_image_acquired, nil)
   vk.DestroyFence(device, fence_frame_finished, nil)
   vk.DestroyCommandPool(device, command_pool, nil)
@@ -636,7 +642,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     memory_barrier_to_write := vk.ImageMemoryBarrier {
       sType               = .IMAGE_MEMORY_BARRIER,
       srcAccessMask       = {},
-      dstAccessMask       = {},
+      dstAccessMask       = {.COLOR_ATTACHMENT_WRITE},
       oldLayout           = .UNDEFINED,
       newLayout           = .COLOR_ATTACHMENT_OPTIMAL,
       srcQueueFamilyIndex = renderer.queue_family_index,
@@ -646,8 +652,8 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
     vk.CmdPipelineBarrier(
       commandBuffer = renderer.command_buffer,
-      srcStageMask = {.FRAGMENT_SHADER},
-      dstStageMask = {.FRAGMENT_SHADER},
+      srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
+      dstStageMask = {.COLOR_ATTACHMENT_OUTPUT},
       dependencyFlags = {.BY_REGION},
       imageMemoryBarrierCount = 1,
       pImageMemoryBarriers = &memory_barrier_to_write,
@@ -669,8 +675,8 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
     vk.CmdPipelineBarrier(
       commandBuffer = renderer.command_buffer,
-      srcStageMask = {.FRAGMENT_SHADER},
-      dstStageMask = {.COLOR_ATTACHMENT_OUTPUT},
+      srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
+      dstStageMask = {.BOTTOM_OF_PIPE},
       dependencyFlags = {},
       imageMemoryBarrierCount = 1,
       pImageMemoryBarriers = &memory_barrier_to_present,
@@ -729,7 +735,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       commandBufferCount   = 1,
       pCommandBuffers      = &renderer.command_buffer,
       signalSemaphoreCount = 1,
-      pSignalSemaphores    = &renderer.semaphore_draw_finished,
+      pSignalSemaphores    = &renderer.semaphores_draw_finished[swapchain_image_index],
     }
     res := vk.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
     if res != .SUCCESS {
@@ -741,13 +747,13 @@ draw_frame :: proc(renderer: ^Renderer) {
     present_info := vk.PresentInfoKHR {
       sType              = .PRESENT_INFO_KHR,
       waitSemaphoreCount = 1,
-      pWaitSemaphores    = &renderer.semaphore_draw_finished,
+      pWaitSemaphores    = &renderer.semaphores_draw_finished[swapchain_image_index],
       swapchainCount     = 1,
       pSwapchains        = &renderer.swapchain,
       pImageIndices      = &swapchain_image_index,
       pResults           = nil,
     }
-    res := vk.QueuePresentKHR(renderer.queue, &present_info) // TODO - semaphore to wait for drawing to complete, signal fence when complete
+    res := vk.QueuePresentKHR(renderer.queue, &present_info)
     if res != .SUCCESS {
       panic("failed to present image")
     }
