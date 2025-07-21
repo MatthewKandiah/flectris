@@ -662,6 +662,38 @@ draw_frame :: proc(renderer: ^Renderer) {
     )
   }
 
+  {   // memory barrier transition to presentable
+    memory_barrier_to_present := vk.ImageMemoryBarrier {
+      sType = .IMAGE_MEMORY_BARRIER,
+      srcAccessMask = {},
+      dstAccessMask = {},
+      oldLayout = .COLOR_ATTACHMENT_OPTIMAL,
+      newLayout = .PRESENT_SRC_KHR,
+      srcQueueFamilyIndex = renderer.queue_family_index,
+      dstQueueFamilyIndex = renderer.queue_family_index,
+      image = renderer.swapchain_images[swapchain_image_index],
+      subresourceRange = vk.ImageSubresourceRange {
+        aspectMask = {.COLOR},
+        baseMipLevel = 0,
+        levelCount = 1,
+        baseArrayLayer = 0,
+        layerCount = 1,
+      },
+    }
+    vk.CmdPipelineBarrier(
+      commandBuffer = renderer.command_buffer,
+      srcStageMask = {.BOTTOM_OF_PIPE},
+      dstStageMask = {.BOTTOM_OF_PIPE},
+      dependencyFlags = {},
+      imageMemoryBarrierCount = 1,
+      pImageMemoryBarriers = &memory_barrier_to_present,
+      memoryBarrierCount = 0,
+      pMemoryBarriers = nil,
+      bufferMemoryBarrierCount = 0,
+      pBufferMemoryBarriers = nil,
+    )
+  }
+
   rendering_info := vk.RenderingInfo {
     sType = .RENDERING_INFO,
     renderArea = vk.Rect2D{offset = vk.Offset2D{0, 0}, extent = renderer.surface_extent},
@@ -696,38 +728,6 @@ draw_frame :: proc(renderer: ^Renderer) {
   )
 
   vk.CmdEndRendering(renderer.command_buffer)
-
-  {   // memory barrier transition to presentable
-    memory_barrier_to_present := vk.ImageMemoryBarrier {
-      sType = .IMAGE_MEMORY_BARRIER,
-      srcAccessMask = {},
-      dstAccessMask = {},
-      oldLayout = .COLOR_ATTACHMENT_OPTIMAL,
-      newLayout = .PRESENT_SRC_KHR,
-      srcQueueFamilyIndex = renderer.queue_family_index,
-      dstQueueFamilyIndex = renderer.queue_family_index,
-      image = renderer.swapchain_images[swapchain_image_index],
-      subresourceRange = vk.ImageSubresourceRange {
-        aspectMask = {.COLOR},
-        baseMipLevel = 0,
-        levelCount = 1,
-        baseArrayLayer = 0,
-        layerCount = 1,
-      },
-    }
-    vk.CmdPipelineBarrier(
-      commandBuffer = renderer.command_buffer,
-      srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
-      dstStageMask = {.BOTTOM_OF_PIPE},
-      dependencyFlags = {},
-      imageMemoryBarrierCount = 1,
-      pImageMemoryBarriers = &memory_barrier_to_present,
-      memoryBarrierCount = 0,
-      pMemoryBarriers = nil,
-      bufferMemoryBarrierCount = 0,
-      pBufferMemoryBarriers = nil,
-    )
-  }
 
   {   // end recording command buffer
     res := vk.EndCommandBuffer(renderer.command_buffer)
