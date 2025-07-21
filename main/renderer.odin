@@ -27,6 +27,9 @@ Renderer :: struct {
   surface_extent:              vk.Extent2D,
   command_pool:                vk.CommandPool,
   command_buffer:              vk.CommandBuffer,
+  semaphore_draw_finished:     vk.Semaphore,
+  fence_image_acquired:        vk.Fence,
+  fence_frame_finished:        vk.Fence,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -495,10 +498,53 @@ init_renderer :: proc() -> (renderer: Renderer) {
     res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
   }
 
+  {   // create synchronisation objects
+    semaphore_create_info := vk.SemaphoreCreateInfo {
+      sType = .SEMAPHORE_CREATE_INFO,
+    }
+    draw_finished_semaphore_res := vk.CreateSemaphore(
+      renderer.device,
+      &semaphore_create_info,
+      nil,
+      &renderer.semaphore_draw_finished,
+    )
+    if draw_finished_semaphore_res != .SUCCESS {
+      panic("failed to create draw finished semaphore")
+    }
+
+    image_acquired_fence_create_info := vk.FenceCreateInfo {
+      sType = .FENCE_CREATE_INFO,
+      flags = {},
+    }
+    image_acquired_fence_res := vk.CreateFence(
+      renderer.device,
+      &image_acquired_fence_create_info,
+      nil,
+      &renderer.fence_image_acquired,
+    )
+    if image_acquired_fence_res != .SUCCESS {
+      panic("failed to create image acquired fence")
+    }
+
+    frame_fence_create_info := vk.FenceCreateInfo {
+      sType = .FENCE_CREATE_INFO,
+      flags = {.SIGNALED},
+    }
+    frame_finished_fence_res := vk.CreateFence(
+      renderer.device,
+      &frame_fence_create_info,
+      nil,
+      &renderer.fence_frame_finished,
+    )
+  }
+
   return renderer
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
+  vk.DestroySemaphore(device, semaphore_draw_finished, nil)
+  vk.DestroyFence(device, fence_image_acquired, nil)
+  vk.DestroyFence(device, fence_frame_finished, nil)
   vk.DestroyCommandPool(device, command_pool, nil)
   vk.DestroyShaderModule(device, vertex_shader_module, nil)
   vk.DestroyBuffer(device, vertex_buffer, nil)
@@ -516,6 +562,18 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
+  {   // ensure previous frame finished before we start
+    wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
+    if wait_res != .SUCCESS {
+      panic("failed to wait for frame fence")
+    }
+
+    reset_res := vk.ResetFences(renderer.device, 1, &renderer.fence_frame_finished)
+    if reset_res != .SUCCESS {
+      panic("failed to reset frame fence")
+    }
+  }
+
   swapchain_image_index: u32
   {   // get next swapchain image
     res := vk.AcquireNextImageKHR(
@@ -523,11 +581,21 @@ draw_frame :: proc(renderer: ^Renderer) {
       renderer.swapchain,
       max(u64),
       0,
-      0,
+      renderer.fence_image_acquired,
       &swapchain_image_index,
     )
     if res != .SUCCESS {
       panic("failed to get next swapchain image")
+    }
+
+    wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_image_acquired, true, max(u64))
+    if wait_res != .SUCCESS {
+      panic("failed to wait for image acquired fence")
+    }
+
+    reset_res := vk.ResetFences(renderer.device, 1, &renderer.fence_image_acquired)
+    if reset_res != .SUCCESS {
+      panic("failed to reset image acquired fence")
     }
   }
 
@@ -655,17 +723,33 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
   }
 
-  submit_info := vk.SubmitInfo {
-    sType              = .SUBMIT_INFO,
-    commandBufferCount = 1,
-    pCommandBuffers    = &renderer.command_buffer,
+  {   // submit commands
+    submit_info := vk.SubmitInfo {
+      sType                = .SUBMIT_INFO,
+      commandBufferCount   = 1,
+      pCommandBuffers      = &renderer.command_buffer,
+      signalSemaphoreCount = 1,
+      pSignalSemaphores    = &renderer.semaphore_draw_finished,
+    }
+    res := vk.QueueSubmit(renderer.queue, 1, &submit_info, 0)
+    if res != .SUCCESS {
+      panic("failed to submit command")
+    }
   }
-  vk.QueueSubmit(
-    renderer.queue,
-    1,
-    &submit_info,
-    0,
-  )
 
-  // vk.QueuePresentKHR()
+  {   // present images
+    present_info := vk.PresentInfoKHR {
+      sType              = .PRESENT_INFO_KHR,
+      waitSemaphoreCount = 1,
+      pWaitSemaphores    = &renderer.semaphore_draw_finished,
+      swapchainCount     = 1,
+      pSwapchains        = &renderer.swapchain,
+      pImageIndices      = &swapchain_image_index,
+      pResults           = nil,
+    }
+    res := vk.QueuePresentKHR(renderer.queue, &present_info) // TODO - semaphore to wait for drawing to complete, signal fence when complete
+    if res != .SUCCESS {
+      panic("failed to present image")
+    }
+  }
 }
