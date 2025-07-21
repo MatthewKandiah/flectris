@@ -450,7 +450,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
       sType            = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       depthClampEnable = false,
       polygonMode      = .FILL,
-      cullMode         = {.BACK},
+      cullMode         = {}, // TODO - make this BACK
       frontFace        = .CLOCKWISE,
       lineWidth        = 1,
     }
@@ -562,6 +562,7 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
+  fmt.println("draw_frame")
   {   // ensure previous frame finished before we start
     wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
     if wait_res != .SUCCESS {
@@ -731,7 +732,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       signalSemaphoreCount = 1,
       pSignalSemaphores    = &renderer.semaphore_draw_finished,
     }
-    res := vk.QueueSubmit(renderer.queue, 1, &submit_info, 0)
+    res := vk.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
     if res != .SUCCESS {
       panic("failed to submit command")
     }

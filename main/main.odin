@@ -94,7 +94,6 @@ main :: proc() {
     glfw.PollEvents()
     // imagine a update game state
     draw_frame(&renderer)
-    break
   }
 }
 
