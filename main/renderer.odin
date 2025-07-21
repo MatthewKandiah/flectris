@@ -27,8 +27,6 @@ Renderer :: struct {
   surface_extent:              vk.Extent2D,
   command_pool:                vk.CommandPool,
   command_buffer:              vk.CommandBuffer,
-  fence_acquire_next_image:    vk.Fence,
-  semaphore:                   vk.Semaphore,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -497,33 +495,10 @@ init_renderer :: proc() -> (renderer: Renderer) {
     res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
   }
 
-  {   // create fence
-    create_info := vk.FenceCreateInfo {
-      sType = .FENCE_CREATE_INFO,
-      flags = {},
-    }
-    res := vk.CreateFence(renderer.device, &create_info, nil, &renderer.fence_acquire_next_image)
-    if res != .SUCCESS {
-      panic("failed to create fence")
-    }
-  }
-
-  {   // create  semaphore
-    create_info := vk.SemaphoreCreateInfo {
-      sType = .SEMAPHORE_CREATE_INFO,
-    }
-    res := vk.CreateSemaphore(renderer.device, &create_info, nil, &renderer.semaphore)
-    if res != .SUCCESS {
-      panic("failed to create semaphore")
-    }
-  }
-
   return renderer
 }
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
-  vk.DestroySemaphore(device, semaphore, nil)
-  vk.DestroyFence(device, fence_acquire_next_image, nil)
   vk.DestroyCommandPool(device, command_pool, nil)
   vk.DestroyShaderModule(device, vertex_shader_module, nil)
   vk.DestroyBuffer(device, vertex_buffer, nil)
@@ -548,18 +523,11 @@ draw_frame :: proc(renderer: ^Renderer) {
       renderer.swapchain,
       max(u64),
       0,
-      renderer.fence_acquire_next_image,
+      0,
       &swapchain_image_index,
     )
     if res != .SUCCESS {
       panic("failed to get next swapchain image")
-    }
-  }
-
-  {   // wait to acquire swapchain image
-    res := vk.WaitForFences(renderer.device, 1, &renderer.fence_acquire_next_image, true, max(u64))
-    if res != .SUCCESS {
-      panic("failed to wait for acquire image fence")
     }
   }
 
@@ -574,8 +542,6 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
   }
 
-  // DEBUG - between here and the END-DEBUG somthing is changing the state of our command buffer from recording to something else (probably invalid)
-  // thought - begin rendering before binding things, guess we're "binding to the active render pass"? If not that, what are we "binding" to?
   clear_value := vk.ClearColorValue {
     float32 = [4]f32{0, 0, 0, 1},
   }
@@ -682,7 +648,6 @@ draw_frame :: proc(renderer: ^Renderer) {
 
   vk.CmdEndRendering(renderer.command_buffer)
 
-  // END-DEBUG
   {   // end recording command buffer
     res := vk.EndCommandBuffer(renderer.command_buffer)
     if res != .SUCCESS {
@@ -699,7 +664,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     renderer.queue,
     1,
     &submit_info,
-    0, // TODO - fence to synchronise with queuepresent?
+    0,
   )
 
   // vk.QueuePresentKHR()
