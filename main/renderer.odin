@@ -480,9 +480,29 @@ init_renderer :: proc() -> (renderer: Renderer) {
       panic("failed to create pipeline layout")
     }
 
+    pipeline_rendering_create_info := vk.PipelineRenderingCreateInfo {
+      sType                   = .PIPELINE_RENDERING_CREATE_INFO,
+      viewMask                = 0,
+      colorAttachmentCount    = 1,
+      pColorAttachmentFormats = &renderer.swapchain_image_format,
+    }
+
+    pipeline_color_blend_attachment_state := vk.PipelineColorBlendAttachmentState {
+      blendEnable    = false,
+      colorWriteMask = {.R, .G, .B, .A},
+    }
+
+    color_blend_state_create_info := vk.PipelineColorBlendStateCreateInfo {
+      sType           = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      flags           = {},
+      logicOpEnable   = false,
+      attachmentCount = 1,
+      pAttachments    = &pipeline_color_blend_attachment_state,
+    }
+
     create_info := vk.GraphicsPipelineCreateInfo {
       sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
-      // pNext = TODO - see VkPipelineRenderingCreateInfo "When a pipeline is created without a VkRenderPass, if the pNext chain of VkGraphicsPipelineCreateInfo includes this structure, it specifies the view mask and format of attachments used for rendering. If this structure is not specified, and the pipeline does not include a VkRenderPass, viewMask and colorAttachmentCount are 0"
+      pNext               = &pipeline_rendering_create_info,
       flags               = {},
       stageCount          = cast(u32)len(pipeline_shader_stages),
       pStages             = raw_data(pipeline_shader_stages),
@@ -491,7 +511,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
       pViewportState      = &viewport_state_create_info,
       pRasterizationState = &rasterization_state_create_info,
       pMultisampleState   = &multisample_state_create_info,
-      pColorBlendState    = nil,
+      pColorBlendState    = &color_blend_state_create_info,
       layout              = pipeline_layout,
       renderPass          = {},
       subpass             = 0,
