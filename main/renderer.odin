@@ -450,8 +450,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
       sType            = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       depthClampEnable = false,
       polygonMode      = .FILL,
-      cullMode         = {}, // TODO - make this BACK
-      frontFace        = .CLOCKWISE,
+      cullMode         = {.BACK},
+      frontFace        = .COUNTER_CLOCKWISE,
       lineWidth        = 1,
     }
 
