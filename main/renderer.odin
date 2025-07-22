@@ -740,6 +740,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     pOffsets = raw_data(offsets),
   )
 
+// TODO NEXT - CmdDrawIndexed
   vk.CmdDraw(
     commandBuffer = renderer.command_buffer,
     vertexCount = cast(u32)len(vertices),
