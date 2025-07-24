@@ -2,9 +2,7 @@
 Tetris but you can pick your tileset.
 
 ## Plan
-- write simple vertex and fragment shaders
-- create shader modules for them
-- create pipeline shader stages for them
-- do the rest of the graphics pipeline setup...
-- Draw a triangle
-- Draw textured quads -> nearest-neighbour filtering
+- handle screen resizing
+- index buffer and use indexed draw
+- enable blending (so we can have transparent bits on our sprites)
+- add texture image and sampling
