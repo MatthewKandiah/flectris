@@ -16,9 +16,10 @@ REQUIRED_DEVICE_EXTENSIONS := []cstring {
   vk.KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,
 }
 GlobalContext :: struct {
-  window:      glfw.WindowHandle,
-  vk_surface:  vk.SurfaceKHR,
-  vk_instance: vk.Instance,
+  window:         glfw.WindowHandle,
+  window_resized: bool,
+  vk_surface:     vk.SurfaceKHR,
+  vk_instance:    vk.Instance,
 }
 gc: GlobalContext
 
@@ -111,7 +112,8 @@ error_callback :: proc "c" (error: i32, description: cstring) {
 
 window_size_callback :: proc "c" (window: glfw.WindowHandle, width: i32, height: i32) {
   context = runtime.default_context()
-  fmt.println("window resized")
+  gc.window_resized = true
+  fmt.println(gc.window_resized)
 }
 
 get_proc_address :: proc(p: rawptr, name: cstring) {

@@ -612,7 +612,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       &swapchain_image_index,
     )
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      fmt.println("non-success on acquire", res)
+      // fmt.println("non-success on acquire", res)
     } else if res != .SUCCESS {
       panic("failed to get next swapchain image")
     }
@@ -786,9 +786,11 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
     res := vk.QueuePresentKHR(renderer.queue, &present_info)
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      fmt.println("queue present error", res)
+      // fmt.println("queue present error", res)
     } else if res != .SUCCESS {
       panic("failed to present image")
     }
   }
 }
+
+create_swapchain :: proc(renderer: ^Renderer) {}
