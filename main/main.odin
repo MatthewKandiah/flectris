@@ -98,10 +98,14 @@ main :: proc() {
   renderer := init_renderer()
 
   // main loop
+  i := 0
   for !glfw.WindowShouldClose(gc.window) {
     glfw.PollEvents()
     // imagine a update game state
+    fmt.println("before draw", i)
     draw_frame(&renderer)
+    fmt.println("after draw", i)
+    i += 1
   }
 }
 

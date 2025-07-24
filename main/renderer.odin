@@ -125,141 +125,9 @@ init_renderer :: proc() -> (renderer: Renderer) {
     vk.GetDeviceQueue(renderer.device, renderer.queue_family_index, 0, &renderer.queue)
   }
 
-  {   // create swapchain
-    surface_capabilities: vk.SurfaceCapabilitiesKHR
-    surface_query_res := vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(
-      renderer.physical_device,
-      gc.vk_surface,
-      &surface_capabilities,
-    )
-
-    supported_present_mode_count: u32
-    get_supported_present_modes_res := vk.GetPhysicalDeviceSurfacePresentModesKHR(
-      renderer.physical_device,
-      gc.vk_surface,
-      &supported_present_mode_count,
-      nil,
-    )
-    if get_supported_present_modes_res != .SUCCESS {
-      panic("failed to get count of supported present modes")
-    }
-    supported_present_modes := make([]vk.PresentModeKHR, supported_present_mode_count)
-    defer delete(supported_present_modes)
-    get_supported_present_modes_res2 := vk.GetPhysicalDeviceSurfacePresentModesKHR(
-      renderer.physical_device,
-      gc.vk_surface,
-      &supported_present_mode_count,
-      raw_data(supported_present_modes),
-    )
-    if get_supported_present_modes_res2 != .SUCCESS {
-      panic("failed to get supported present modes")
-    }
-    mailbox_supported := false
-    for supported_mode in supported_present_modes {
-      if supported_mode == .MAILBOX {
-        mailbox_supported = true
-        break
-      }
-    }
-    present_mode: vk.PresentModeKHR = .MAILBOX if mailbox_supported else .FIFO
-
-    supported_format_count: u32
-    get_supported_formats_res := vk.GetPhysicalDeviceSurfaceFormatsKHR(
-      renderer.physical_device,
-      gc.vk_surface,
-      &supported_format_count,
-      nil,
-    )
-    if get_supported_formats_res != .SUCCESS {
-      panic("failed to get count of supported surface formats")
-    }
-    supported_formats := make([]vk.SurfaceFormatKHR, supported_format_count)
-    defer delete(supported_formats)
-    get_supported_formats_res2 := vk.GetPhysicalDeviceSurfaceFormatsKHR(
-      renderer.physical_device,
-      gc.vk_surface,
-      &supported_format_count,
-      raw_data(supported_formats),
-    )
-    if get_supported_formats_res2 != .SUCCESS || len(supported_formats) == 0 {
-      panic("failed to get supported surface formats")
-    }
-
-    desired_format := vk.SurfaceFormatKHR {
-      format     = .B8G8R8A8_SRGB,
-      colorSpace = .SRGB_NONLINEAR,
-    }
-    desired_format_supported := false
-    for supported_format in supported_formats {
-      if supported_format == desired_format {
-        desired_format_supported = true
-        break
-      }
-    }
-    surface_image_format := desired_format if desired_format_supported else supported_formats[0]
-
-    renderer.surface_extent = surface_capabilities.currentExtent
-
-    create_info := vk.SwapchainCreateInfoKHR {
-      sType            = .SWAPCHAIN_CREATE_INFO_KHR,
-      flags            = vk.SwapchainCreateFlagsKHR{},
-      surface          = gc.vk_surface,
-      minImageCount    = surface_capabilities.minImageCount,
-      imageFormat      = surface_image_format.format,
-      imageColorSpace  = surface_image_format.colorSpace,
-      imageExtent      = renderer.surface_extent,
-      imageArrayLayers = 1,
-      imageUsage       = vk.ImageUsageFlags{.COLOR_ATTACHMENT},
-      imageSharingMode = .EXCLUSIVE,
-      preTransform     = surface_capabilities.currentTransform,
-      compositeAlpha   = vk.CompositeAlphaFlagsKHR{.OPAQUE},
-      presentMode      = present_mode,
-      clipped          = true,
-    }
-    res := vk.CreateSwapchainKHR(renderer.device, &create_info, nil, &renderer.swapchain)
-    if res != .SUCCESS {
-      panic("failed to create swapchain")
-    }
-    renderer.swapchain_image_format = surface_image_format.format
-  }
-
-  {   // make swapchain images
-    count: u32
-    res := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, nil)
-    if res != .SUCCESS {
-      panic("failed to get swapchain images count")
-    }
-    renderer.swapchain_images = make([]vk.Image, count)
-    res2 := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, raw_data(renderer.swapchain_images))
-    if res2 != .SUCCESS {
-      panic("failed to get swapchain images")
-    }
-  }
-
-  {   // make swapchain image views
-    renderer.swapchain_image_views = make([]vk.ImageView, cast(u32)len(renderer.swapchain_images))
-    for i in 0 ..< len(renderer.swapchain_images) {
-      create_info := vk.ImageViewCreateInfo {
-        sType = .IMAGE_VIEW_CREATE_INFO,
-        flags = {},
-        image = renderer.swapchain_images[i],
-        viewType = .D2,
-        format = renderer.swapchain_image_format,
-        components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
-        subresourceRange = {
-          aspectMask = vk.ImageAspectFlags{.COLOR},
-          baseMipLevel = 0,
-          levelCount = 1,
-          baseArrayLayer = 0,
-          layerCount = 1,
-        },
-      }
-      res := vk.CreateImageView(renderer.device, &create_info, nil, &renderer.swapchain_image_views[i])
-      if res != .SUCCESS {
-        panic("failed to create swapchain image views")
-      }
-    }
-  }
+  create_swapchain(&renderer)
+  create_swapchain_images(&renderer)
+  create_swapchain_image_views(&renderer)
 
   {   // create command pool
     create_info := vk.CommandPoolCreateInfo {
@@ -389,135 +257,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
   }
 
-  {   // create graphics pipeline
-    vertex_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
-      sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
-      flags  = {},
-      stage  = {.VERTEX},
-      module = renderer.vertex_shader_module,
-      pName  = "main",
-    }
-
-    fragment_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
-      sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
-      flags  = {},
-      stage  = {.FRAGMENT},
-      module = renderer.fragment_shader_module,
-      pName  = "main",
-    }
-
-    pipeline_shader_stages := []vk.PipelineShaderStageCreateInfo {
-      vertex_shader_stage_create_info,
-      fragment_shader_stage_create_info,
-    }
-
-    vertex_input_state_create_info := vk.PipelineVertexInputStateCreateInfo {
-      sType                           = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-      flags                           = {},
-      vertexBindingDescriptionCount   = 1,
-      pVertexBindingDescriptions      = &vertex_input_binding_description,
-      vertexAttributeDescriptionCount = cast(u32)len(vertex_input_attribute_descriptions),
-      pVertexAttributeDescriptions    = raw_data(vertex_input_attribute_descriptions),
-    }
-
-    input_assembly_state_create_info := vk.PipelineInputAssemblyStateCreateInfo {
-      sType    = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-      flags    = {},
-      topology = .TRIANGLE_LIST,
-    }
-
-    viewport := vk.Viewport {
-      x        = 0,
-      y        = 0,
-      width    = cast(f32)renderer.surface_extent.width,
-      height   = cast(f32)renderer.surface_extent.height,
-      minDepth = 0,
-      maxDepth = 1,
-    }
-    scissor := vk.Rect2D {
-      offset = {x = 0, y = 0},
-      extent = renderer.surface_extent,
-    }
-    viewport_state_create_info := vk.PipelineViewportStateCreateInfo {
-      sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-      viewportCount = 1,
-      pViewports    = &viewport,
-      scissorCount  = 1,
-      pScissors     = &scissor,
-    }
-
-    rasterization_state_create_info := vk.PipelineRasterizationStateCreateInfo {
-      sType            = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-      depthClampEnable = false,
-      polygonMode      = .FILL,
-      cullMode         = {.BACK},
-      frontFace        = .COUNTER_CLOCKWISE,
-      lineWidth        = 1,
-    }
-
-    multisample_state_create_info := vk.PipelineMultisampleStateCreateInfo {
-      sType                = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-      sampleShadingEnable  = false,
-      rasterizationSamples = vk.SampleCountFlags{._1},
-    }
-
-    pipeline_layout: vk.PipelineLayout
-    pipeline_layout_create_info := vk.PipelineLayoutCreateInfo {
-      sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
-      flags                  = {},
-      setLayoutCount         = 0,
-      pSetLayouts            = nil,
-      pushConstantRangeCount = 0,
-      pPushConstantRanges    = nil,
-    }
-    pipeline_layout_create_res := vk.CreatePipelineLayout(
-      renderer.device,
-      &pipeline_layout_create_info,
-      nil,
-      &pipeline_layout,
-    )
-    if pipeline_layout_create_res != .SUCCESS {
-      panic("failed to create pipeline layout")
-    }
-
-    pipeline_rendering_create_info := vk.PipelineRenderingCreateInfo {
-      sType                   = .PIPELINE_RENDERING_CREATE_INFO,
-      viewMask                = 0,
-      colorAttachmentCount    = 1,
-      pColorAttachmentFormats = &renderer.swapchain_image_format,
-    }
-
-    pipeline_color_blend_attachment_state := vk.PipelineColorBlendAttachmentState {
-      blendEnable    = false,
-      colorWriteMask = {.R, .G, .B, .A},
-    }
-
-    color_blend_state_create_info := vk.PipelineColorBlendStateCreateInfo {
-      sType           = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-      flags           = {},
-      logicOpEnable   = false,
-      attachmentCount = 1,
-      pAttachments    = &pipeline_color_blend_attachment_state,
-    }
-
-    create_info := vk.GraphicsPipelineCreateInfo {
-      sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
-      pNext               = &pipeline_rendering_create_info,
-      flags               = {},
-      stageCount          = cast(u32)len(pipeline_shader_stages),
-      pStages             = raw_data(pipeline_shader_stages),
-      pVertexInputState   = &vertex_input_state_create_info,
-      pInputAssemblyState = &input_assembly_state_create_info,
-      pViewportState      = &viewport_state_create_info,
-      pRasterizationState = &rasterization_state_create_info,
-      pMultisampleState   = &multisample_state_create_info,
-      pColorBlendState    = &color_blend_state_create_info,
-      layout              = pipeline_layout,
-      renderPass          = {},
-      subpass             = 0,
-    }
-    res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
-  }
+  create_graphics_pipeline(&renderer)
 
   {   // create synchronisation objects
     semaphore_create_info := vk.SemaphoreCreateInfo {
@@ -565,6 +305,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
   return renderer
 }
 
+// pull out destroy function for stuff that depends on screen size
 deinit_renderer :: proc(using renderer: ^Renderer) {
   for i in 0 ..< len(swapchain_images) {
     vk.DestroySemaphore(device, semaphores_draw_finished[i], nil)
@@ -589,6 +330,11 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
+  if gc.window_resized {
+    handle_screen_resized(renderer)
+    return
+  }
+
   {   // ensure previous frame finished before we start
     wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
     if wait_res != .SUCCESS {
@@ -612,7 +358,8 @@ draw_frame :: proc(renderer: ^Renderer) {
       &swapchain_image_index,
     )
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      // fmt.println("non-success on acquire", res)
+      fmt.println("acquire image early return")
+      return
     } else if res != .SUCCESS {
       panic("failed to get next swapchain image")
     }
@@ -786,11 +533,298 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
     res := vk.QueuePresentKHR(renderer.queue, &present_info)
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      // fmt.println("queue present error", res)
+      fmt.println("queue present early return")
+      return
     } else if res != .SUCCESS {
       panic("failed to present image")
     }
   }
 }
 
-create_swapchain :: proc(renderer: ^Renderer) {}
+create_swapchain :: proc(renderer: ^Renderer) {
+  surface_capabilities: vk.SurfaceCapabilitiesKHR
+  surface_query_res := vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(
+    renderer.physical_device,
+    gc.vk_surface,
+    &surface_capabilities,
+  )
+
+  supported_present_mode_count: u32
+  get_supported_present_modes_res := vk.GetPhysicalDeviceSurfacePresentModesKHR(
+    renderer.physical_device,
+    gc.vk_surface,
+    &supported_present_mode_count,
+    nil,
+  )
+  if get_supported_present_modes_res != .SUCCESS {
+    panic("failed to get count of supported present modes")
+  }
+  supported_present_modes := make([]vk.PresentModeKHR, supported_present_mode_count)
+  defer delete(supported_present_modes)
+  get_supported_present_modes_res2 := vk.GetPhysicalDeviceSurfacePresentModesKHR(
+    renderer.physical_device,
+    gc.vk_surface,
+    &supported_present_mode_count,
+    raw_data(supported_present_modes),
+  )
+  if get_supported_present_modes_res2 != .SUCCESS {
+    panic("failed to get supported present modes")
+  }
+  mailbox_supported := false
+  for supported_mode in supported_present_modes {
+    if supported_mode == .MAILBOX {
+      mailbox_supported = true
+      break
+    }
+  }
+  present_mode: vk.PresentModeKHR = .MAILBOX if mailbox_supported else .FIFO
+
+  supported_format_count: u32
+  get_supported_formats_res := vk.GetPhysicalDeviceSurfaceFormatsKHR(
+    renderer.physical_device,
+    gc.vk_surface,
+    &supported_format_count,
+    nil,
+  )
+  if get_supported_formats_res != .SUCCESS {
+    panic("failed to get count of supported surface formats")
+  }
+  supported_formats := make([]vk.SurfaceFormatKHR, supported_format_count)
+  defer delete(supported_formats)
+  get_supported_formats_res2 := vk.GetPhysicalDeviceSurfaceFormatsKHR(
+    renderer.physical_device,
+    gc.vk_surface,
+    &supported_format_count,
+    raw_data(supported_formats),
+  )
+  if get_supported_formats_res2 != .SUCCESS || len(supported_formats) == 0 {
+    panic("failed to get supported surface formats")
+  }
+
+  desired_format := vk.SurfaceFormatKHR {
+    format     = .B8G8R8A8_SRGB,
+    colorSpace = .SRGB_NONLINEAR,
+  }
+  desired_format_supported := false
+  for supported_format in supported_formats {
+    if supported_format == desired_format {
+      desired_format_supported = true
+      break
+    }
+  }
+  surface_image_format := desired_format if desired_format_supported else supported_formats[0]
+
+  renderer.surface_extent = surface_capabilities.currentExtent
+
+  create_info := vk.SwapchainCreateInfoKHR {
+    sType            = .SWAPCHAIN_CREATE_INFO_KHR,
+    flags            = vk.SwapchainCreateFlagsKHR{},
+    surface          = gc.vk_surface,
+    minImageCount    = surface_capabilities.minImageCount,
+    imageFormat      = surface_image_format.format,
+    imageColorSpace  = surface_image_format.colorSpace,
+    imageExtent      = renderer.surface_extent,
+    imageArrayLayers = 1,
+    imageUsage       = vk.ImageUsageFlags{.COLOR_ATTACHMENT},
+    imageSharingMode = .EXCLUSIVE,
+    preTransform     = surface_capabilities.currentTransform,
+    compositeAlpha   = vk.CompositeAlphaFlagsKHR{.OPAQUE},
+    presentMode      = present_mode,
+    clipped          = true,
+  }
+  res := vk.CreateSwapchainKHR(renderer.device, &create_info, nil, &renderer.swapchain)
+  if res != .SUCCESS {
+    panic("failed to create swapchain")
+  };renderer.swapchain_image_format = surface_image_format.format
+}
+
+create_swapchain_images :: proc(renderer: ^Renderer) {
+  count: u32
+  res := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, nil)
+  if res != .SUCCESS {
+    panic("failed to get swapchain images count")
+  }
+  renderer.swapchain_images = make([]vk.Image, count)
+  res2 := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, raw_data(renderer.swapchain_images))
+  if res2 != .SUCCESS {
+    panic("failed to get swapchain images")
+  }
+}
+
+create_swapchain_image_views :: proc(renderer: ^Renderer) {
+  renderer.swapchain_image_views = make([]vk.ImageView, cast(u32)len(renderer.swapchain_images))
+  for i in 0 ..< len(renderer.swapchain_images) {
+    create_info := vk.ImageViewCreateInfo {
+      sType = .IMAGE_VIEW_CREATE_INFO,
+      flags = {},
+      image = renderer.swapchain_images[i],
+      viewType = .D2,
+      format = renderer.swapchain_image_format,
+      components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
+      subresourceRange = {
+        aspectMask = vk.ImageAspectFlags{.COLOR},
+        baseMipLevel = 0,
+        levelCount = 1,
+        baseArrayLayer = 0,
+        layerCount = 1,
+      },
+    }
+    res := vk.CreateImageView(renderer.device, &create_info, nil, &renderer.swapchain_image_views[i])
+    if res != .SUCCESS {
+      panic("failed to create swapchain image views")
+    }
+  }}
+
+create_graphics_pipeline :: proc(renderer: ^Renderer) {
+  vertex_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
+    sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+    flags  = {},
+    stage  = {.VERTEX},
+    module = renderer.vertex_shader_module,
+    pName  = "main",
+  }
+
+  fragment_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
+    sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+    flags  = {},
+    stage  = {.FRAGMENT},
+    module = renderer.fragment_shader_module,
+    pName  = "main",
+  }
+
+  pipeline_shader_stages := []vk.PipelineShaderStageCreateInfo {
+    vertex_shader_stage_create_info,
+    fragment_shader_stage_create_info,
+  }
+
+  vertex_input_state_create_info := vk.PipelineVertexInputStateCreateInfo {
+    sType                           = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    flags                           = {},
+    vertexBindingDescriptionCount   = 1,
+    pVertexBindingDescriptions      = &vertex_input_binding_description,
+    vertexAttributeDescriptionCount = cast(u32)len(vertex_input_attribute_descriptions),
+    pVertexAttributeDescriptions    = raw_data(vertex_input_attribute_descriptions),
+  }
+
+  input_assembly_state_create_info := vk.PipelineInputAssemblyStateCreateInfo {
+    sType    = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    flags    = {},
+    topology = .TRIANGLE_LIST,
+  }
+
+  viewport := vk.Viewport {
+    x        = 0,
+    y        = 0,
+    width    = cast(f32)renderer.surface_extent.width,
+    height   = cast(f32)renderer.surface_extent.height,
+    minDepth = 0,
+    maxDepth = 1,
+  }
+  scissor := vk.Rect2D {
+    offset = {x = 0, y = 0},
+    extent = renderer.surface_extent,
+  }
+  viewport_state_create_info := vk.PipelineViewportStateCreateInfo {
+    sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    viewportCount = 1,
+    pViewports    = &viewport,
+    scissorCount  = 1,
+    pScissors     = &scissor,
+  }
+
+  rasterization_state_create_info := vk.PipelineRasterizationStateCreateInfo {
+    sType            = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    depthClampEnable = false,
+    polygonMode      = .FILL,
+    cullMode         = {.BACK},
+    frontFace        = .COUNTER_CLOCKWISE,
+    lineWidth        = 1,
+  }
+
+  multisample_state_create_info := vk.PipelineMultisampleStateCreateInfo {
+    sType                = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    sampleShadingEnable  = false,
+    rasterizationSamples = vk.SampleCountFlags{._1},
+  }
+
+  pipeline_layout: vk.PipelineLayout
+  pipeline_layout_create_info := vk.PipelineLayoutCreateInfo {
+    sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
+    flags                  = {},
+    setLayoutCount         = 0,
+    pSetLayouts            = nil,
+    pushConstantRangeCount = 0,
+    pPushConstantRanges    = nil,
+  }
+  pipeline_layout_create_res := vk.CreatePipelineLayout(
+    renderer.device,
+    &pipeline_layout_create_info,
+    nil,
+    &pipeline_layout,
+  )
+  if pipeline_layout_create_res != .SUCCESS {
+    panic("failed to create pipeline layout")
+  }
+
+  pipeline_rendering_create_info := vk.PipelineRenderingCreateInfo {
+    sType                   = .PIPELINE_RENDERING_CREATE_INFO,
+    viewMask                = 0,
+    colorAttachmentCount    = 1,
+    pColorAttachmentFormats = &renderer.swapchain_image_format,
+  }
+
+  pipeline_color_blend_attachment_state := vk.PipelineColorBlendAttachmentState {
+    blendEnable    = false,
+    colorWriteMask = {.R, .G, .B, .A},
+  }
+
+  color_blend_state_create_info := vk.PipelineColorBlendStateCreateInfo {
+    sType           = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    flags           = {},
+    logicOpEnable   = false,
+    attachmentCount = 1,
+    pAttachments    = &pipeline_color_blend_attachment_state,
+  }
+  create_info := vk.GraphicsPipelineCreateInfo {
+    sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
+    pNext               = &pipeline_rendering_create_info,
+    flags               = {},
+    stageCount          = cast(u32)len(pipeline_shader_stages),
+    pStages             = raw_data(pipeline_shader_stages),
+    pVertexInputState   = &vertex_input_state_create_info,
+    pInputAssemblyState = &input_assembly_state_create_info,
+    pViewportState      = &viewport_state_create_info,
+    pRasterizationState = &rasterization_state_create_info,
+    pMultisampleState   = &multisample_state_create_info,
+    pColorBlendState    = &color_blend_state_create_info,
+    layout              = pipeline_layout,
+    renderPass          = {},
+    subpass             = 0,
+  }
+  res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
+}
+
+// TODO NEXT - this is broken...
+// spotted the problem, on early return we don't signal the fence, so the next frame hangs waiting for the previous frame to finish
+handle_screen_resized :: proc(renderer: ^Renderer) {
+  wait_res := vk.DeviceWaitIdle(renderer.device)
+  if wait_res != .SUCCESS {
+    panic("failed wait for idle")
+  }
+
+  for i in 0 ..< len(renderer.swapchain_images) {
+    vk.DestroyImageView(renderer.device, renderer.swapchain_image_views[i], nil)
+  }
+  delete(renderer.swapchain_image_views)
+  delete(renderer.swapchain_images)
+  vk.DestroySwapchainKHR(renderer.device, renderer.swapchain, nil)
+  vk.DestroyPipeline(renderer.device, renderer.graphics_pipeline, nil)
+
+  create_swapchain(renderer)
+  create_swapchain_images(renderer)
+  create_swapchain_image_views(renderer)
+  create_graphics_pipeline(renderer)
+
+  gc.window_resized = false
+  fmt.println("resize handled")
+}
