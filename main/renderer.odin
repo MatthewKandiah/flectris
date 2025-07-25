@@ -358,8 +358,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       &swapchain_image_index,
     )
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      fmt.println("acquire image early return")
-      return
+      fmt.println("swapchain out of date / suboptimal on acquire next image")
     } else if res != .SUCCESS {
       panic("failed to get next swapchain image")
     }
@@ -533,8 +532,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
     res := vk.QueuePresentKHR(renderer.queue, &present_info)
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      fmt.println("queue present early return")
-      return
+      fmt.println("swapchain out of date / suboptimal on queue present")
     } else if res != .SUCCESS {
       panic("failed to present image")
     }
@@ -804,8 +802,6 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
   res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
 }
 
-// TODO NEXT - this is broken...
-// spotted the problem, on early return we don't signal the fence, so the next frame hangs waiting for the previous frame to finish
 handle_screen_resized :: proc(renderer: ^Renderer) {
   wait_res := vk.DeviceWaitIdle(renderer.device)
   if wait_res != .SUCCESS {
