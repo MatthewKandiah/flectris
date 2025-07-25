@@ -387,9 +387,13 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
   vk.DestroyCommandPool(device, command_pool, nil)
   vk.DestroyShaderModule(device, vertex_shader_module, nil)
   vk.DestroyBuffer(device, vertex_buffer, nil)
+  vk.DestroyBuffer(device, index_buffer, nil)
   renderer.vertex_buffer_memory_mapped = nil
+  renderer.index_buffer_memory_mapped = nil
   vk.UnmapMemory(device, vertex_buffer_memory)
+  vk.UnmapMemory(device, index_buffer_memory)
   vk.FreeMemory(device, vertex_buffer_memory, nil)
+  vk.FreeMemory(device, index_buffer_memory, nil)
   for image_view in swapchain_image_views {
     vk.DestroyImageView(device, image_view, nil)
   }
