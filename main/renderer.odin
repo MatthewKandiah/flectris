@@ -305,7 +305,6 @@ init_renderer :: proc() -> (renderer: Renderer) {
   return renderer
 }
 
-// pull out destroy function for stuff that depends on screen size
 deinit_renderer :: proc(using renderer: ^Renderer) {
   for i in 0 ..< len(swapchain_images) {
     vk.DestroySemaphore(device, semaphores_draw_finished[i], nil)
@@ -358,7 +357,7 @@ draw_frame :: proc(renderer: ^Renderer) {
       &swapchain_image_index,
     )
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      fmt.println("swapchain out of date / suboptimal on acquire next image")
+      // fmt.println("swapchain out of date / suboptimal on acquire next image")
     } else if res != .SUCCESS {
       panic("failed to get next swapchain image")
     }
@@ -532,7 +531,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
     res := vk.QueuePresentKHR(renderer.queue, &present_info)
     if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
-      fmt.println("swapchain out of date / suboptimal on queue present")
+      // fmt.println("swapchain out of date / suboptimal on queue present")
     } else if res != .SUCCESS {
       panic("failed to present image")
     }
@@ -822,5 +821,4 @@ handle_screen_resized :: proc(renderer: ^Renderer) {
   create_graphics_pipeline(renderer)
 
   gc.window_resized = false
-  fmt.println("resize handled")
 }

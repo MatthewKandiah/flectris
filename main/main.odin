@@ -98,14 +98,10 @@ main :: proc() {
   renderer := init_renderer()
 
   // main loop
-  i := 0
   for !glfw.WindowShouldClose(gc.window) {
     glfw.PollEvents()
     // imagine a update game state
-    fmt.println("before draw", i)
     draw_frame(&renderer)
-    fmt.println("after draw", i)
-    i += 1
   }
 }
 
@@ -117,7 +113,6 @@ error_callback :: proc "c" (error: i32, description: cstring) {
 window_size_callback :: proc "c" (window: glfw.WindowHandle, width: i32, height: i32) {
   context = runtime.default_context()
   gc.window_resized = true
-  fmt.println(gc.window_resized)
 }
 
 get_proc_address :: proc(p: rawptr, name: cstring) {
