@@ -24,14 +24,17 @@ GlobalContext :: struct {
 gc: GlobalContext
 
 vertices :: []Vertex {
-  // triangle1 - top left
-  {{-0.5, -0.5}, {1, 0, 0}}, //
-  {{-0.5, 0.5}, {0, 1, 0}}, //
-  {{0.5, -0.5}, {0, 0, 1}}, //
-  // triangle2 - bottom right
-  {{0.5, -0.5}, {1, 1, 1}}, //
-  {{-0.5, 0.5}, {0.7, 0.7, 0.7}}, //
-  {{0.5, 0.5}, {0.3, 0.3, 0.3}}, //
+  {{-0.5, -0.5}, {1, 0, 0}}, // top left
+  {{-0.5, 0.5}, {0, 1, 0}}, // bottom left
+  {{0.5, -0.5}, {0, 0, 1}}, // top right
+  {{0.5, 0.5}, {0.3, 0.3, 0.3}}, // bottom right
+}
+
+indices :: []u32 {
+  // triangle 1
+	0, 1, 2,
+  // triangle 2
+  2, 1, 3,
 }
 
 main :: proc() {

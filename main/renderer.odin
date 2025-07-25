@@ -21,6 +21,9 @@ Renderer :: struct {
   vertex_buffer:               vk.Buffer,
   vertex_buffer_memory:        vk.DeviceMemory,
   vertex_buffer_memory_mapped: rawptr,
+  index_buffer:                vk.Buffer,
+  index_buffer_memory:         vk.DeviceMemory,
+  index_buffer_memory_mapped:  rawptr,
   fragment_shader_module:      vk.ShaderModule,
   vertex_shader_module:        vk.ShaderModule,
   graphics_pipeline:           vk.Pipeline,
@@ -220,6 +223,75 @@ init_renderer :: proc() -> (renderer: Renderer) {
       renderer.vertex_buffer_memory_mapped,
       raw_data(vertices),
       size_of(Vertex) * len(vertices),
+    )
+  }
+
+  {   // create index buffer
+    create_info := vk.BufferCreateInfo {
+      sType       = .BUFFER_CREATE_INFO,
+      flags       = {},
+      size        = cast(vk.DeviceSize)(size_of(u32) * len(indices)),
+      usage       = {.INDEX_BUFFER},
+      sharingMode = .EXCLUSIVE,
+    }
+    res := vk.CreateBuffer(renderer.device, &create_info, nil, &renderer.index_buffer)
+    if res != .SUCCESS {
+      panic("failed to create index buffer")
+    }
+  }
+
+  {   // allocate index buffer memory and bind it
+    memory_requirements: vk.MemoryRequirements
+    vk.GetBufferMemoryRequirements(renderer.device, renderer.index_buffer, &memory_requirements)
+
+    memory_properties: vk.PhysicalDeviceMemoryProperties
+    vk.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
+    desired_memory_type_properties := vk.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
+    memory_type_index := -1
+    for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
+      physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
+      supports_desired_memory_properties := desired_memory_type_properties <= memory_type.propertyFlags
+      if supports_desired_memory_properties && physical_device_supports_resource_type {
+        memory_type_index = idx
+        break
+      }
+    }
+    if memory_type_index == -1 {
+      panic("failed to find a suitable memory type for index buffer allocation")
+    }
+
+    allocate_info := vk.MemoryAllocateInfo {
+      sType           = .MEMORY_ALLOCATE_INFO,
+      allocationSize  = memory_requirements.size,
+      memoryTypeIndex = cast(u32)memory_type_index,
+    }
+    res := vk.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.index_buffer_memory)
+    if res != .SUCCESS {
+      panic("failed to allocate index buffer memory")
+    }
+
+    bind_res := vk.BindBufferMemory(renderer.device, renderer.index_buffer, renderer.index_buffer_memory, 0)
+    if bind_res != .SUCCESS {
+      panic("failed to bind index buffer memory")
+    }
+  }
+
+  {   // map index buffer memory
+    res := vk.MapMemory(
+      renderer.device,
+      renderer.index_buffer_memory,
+      0,
+      cast(vk.DeviceSize)vk.WHOLE_SIZE,
+      {},
+      &renderer.index_buffer_memory_mapped,
+    )
+  }
+
+  {   // copy index data into index buffer
+    intrinsics.mem_copy_non_overlapping(
+      renderer.index_buffer_memory_mapped,
+      raw_data(indices),
+      size_of(u32) * len(indices),
     )
   }
 
@@ -487,12 +559,19 @@ draw_frame :: proc(renderer: ^Renderer) {
     pOffsets = raw_data(offsets),
   )
 
-  // TODO NEXT - CmdDrawIndexed
-  vk.CmdDraw(
+  vk.CmdBindIndexBuffer(
     commandBuffer = renderer.command_buffer,
-    vertexCount = cast(u32)len(vertices),
+    buffer = renderer.index_buffer,
+    offset = 0,
+    indexType = .UINT32,
+  )
+
+  vk.CmdDrawIndexed(
+    commandBuffer = renderer.command_buffer,
+    indexCount = cast(u32)len(indices),
     instanceCount = 1,
-    firstVertex = 0,
+    firstIndex = 0,
+    vertexOffset = 0,
     firstInstance = 0,
   )
 
