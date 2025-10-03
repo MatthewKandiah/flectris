@@ -32,9 +32,13 @@ vertices :: []Vertex {
 
 indices :: []u32 {
   // triangle 1
-	0, 1, 2,
+  0,
+  1,
+  2,
   // triangle 2
-  2, 1, 3,
+  2,
+  1,
+  3,
 }
 
 main :: proc() {
