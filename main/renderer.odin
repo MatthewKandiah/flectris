@@ -38,11 +38,11 @@ Renderer :: struct {
 
 init_renderer :: proc() -> (renderer: Renderer) {
     {     // pick a physical device
-	res, count, physical_devices := vk.enumerate_physical_devices(gc.vk_instance)
-	if vk.not_success(res) {
-	    vk.fatal("failed to enumerate physical devices", res, count)
-	}
-	defer delete(physical_devices)
+        res, count, physical_devices := vk.enumerate_physical_devices(gc.vk_instance)
+        if vk.not_success(res) {
+            vk.fatal("failed to enumerate physical devices", res, count)
+        }
+        defer delete(physical_devices)
 
         for device in physical_devices {
             properties: vulkan.PhysicalDeviceProperties
@@ -59,7 +59,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // pick a device queue index
-	count, queue_families_properties := vk.get_physical_device_queue_family_properties(renderer.physical_device)
+        count, queue_families_properties := vk.get_physical_device_queue_family_properties(renderer.physical_device)
         defer delete(queue_families_properties)
 
         found := false
@@ -358,9 +358,9 @@ init_renderer :: proc() -> (renderer: Renderer) {
             nil,
             &renderer.fence_frame_finished,
         )
-	if vk.not_success(frame_finished_fence_res) {
-	    panic("failed to create frame finished fence")
-	}
+        if vk.not_success(frame_finished_fence_res) {
+            panic("failed to create frame finished fence")
+        }
     }
 
     return renderer
@@ -612,9 +612,14 @@ draw_frame :: proc(renderer: ^Renderer) {
 
 create_swapchain :: proc(renderer: ^Renderer) {
     surface_capabilities := vk.get_physical_device_surface_capabilities_khr(renderer.physical_device, gc.vk_surface)
-    supported_present_modes_res, supported_present_modes_count, supported_present_modes := vk.get_physical_device_surface_present_modes_khr(renderer.physical_device, gc.vk_surface)
+    supported_present_modes_res, supported_present_modes_count, supported_present_modes :=
+        vk.get_physical_device_surface_present_modes_khr(renderer.physical_device, gc.vk_surface)
     if vk.not_success(supported_present_modes_res) {
-        vk.fatal("failed to get count of supported present modes", supported_present_modes_res, supported_present_modes_count)
+        vk.fatal(
+            "failed to get count of supported present modes",
+            supported_present_modes_res,
+            supported_present_modes_count,
+        )
     }
     defer delete(supported_present_modes)
     mailbox_supported := false
@@ -626,7 +631,10 @@ create_swapchain :: proc(renderer: ^Renderer) {
     }
     present_mode: vulkan.PresentModeKHR = .MAILBOX if mailbox_supported else .FIFO
 
-    get_supported_formats_res, supported_format_count, supported_formats := vk.get_physical_device_surface_formats_khr(renderer.physical_device, gc.vk_surface)
+    get_supported_formats_res, supported_format_count, supported_formats := vk.get_physical_device_surface_formats_khr(
+        renderer.physical_device,
+        gc.vk_surface,
+    )
     if vk.not_success(get_supported_formats_res) {
         vk.fatal("failed to get count of supported surface formats", get_supported_formats_res, supported_format_count)
     }
@@ -673,7 +681,7 @@ create_swapchain :: proc(renderer: ^Renderer) {
 create_swapchain_images :: proc(renderer: ^Renderer) {
     res, count, swapchain_images := vk.get_swapchain_images_khr(renderer.device, renderer.swapchain)
     if vk.not_success(res) {
-	vk.fatal("failed to get swapchain images", res, count)
+        vk.fatal("failed to get swapchain images", res, count)
     }
     renderer.swapchain_images = swapchain_images
 }
