@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:os"
 import "vendor:glfw"
 import "vendor:vulkan"
+import "vk"
 
 VERTEX_SHADER_PATH :: "vert.spv"
 FRAGMENT_SHADER_PATH :: "frag.spv"
@@ -37,18 +38,11 @@ Renderer :: struct {
 
 init_renderer :: proc() -> (renderer: Renderer) {
     {     // pick a physical device
-        count: u32
-        res: vulkan.Result
-        res = vulkan.EnumeratePhysicalDevices(gc.vk_instance, &count, nil)
-        if res != .SUCCESS {
-            panic("enumerate physical devices failed")
-        }
-        physical_devices := make([]vulkan.PhysicalDevice, count)
-        defer delete(physical_devices)
-        res = vulkan.EnumeratePhysicalDevices(gc.vk_instance, &count, raw_data(physical_devices))
-        if res != .SUCCESS {
-            panic("enumerate physical devices second call failed")
-        }
+	res, count, physical_devices := vk.enumerate_physical_devices(gc.vk_instance)
+	if vk.not_success(res) {
+	    vk.fatal("failed to enumerate physical devices", res, count)
+	}
+	defer delete(physical_devices)
 
         for device in physical_devices {
             properties: vulkan.PhysicalDeviceProperties
@@ -65,15 +59,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // pick a device queue index
-        count: u32
-        vulkan.GetPhysicalDeviceQueueFamilyProperties(renderer.physical_device, &count, nil)
-        queue_families_properties := make([]vulkan.QueueFamilyProperties, count)
+	count, queue_families_properties := vk.get_physical_device_queue_family_properties(renderer.physical_device)
         defer delete(queue_families_properties)
-        vulkan.GetPhysicalDeviceQueueFamilyProperties(
-            renderer.physical_device,
-            &count,
-            raw_data(queue_families_properties),
-        )
 
         found := false
         for queue_family_properties, index in queue_families_properties {
@@ -177,11 +164,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // allocate vertex buffer memory and bind it
-        memory_requirements: vulkan.MemoryRequirements
-        vulkan.GetBufferMemoryRequirements(renderer.device, renderer.vertex_buffer, &memory_requirements)
-
-        memory_properties: vulkan.PhysicalDeviceMemoryProperties
-        vulkan.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
+        memory_requirements := vk.get_buffer_memory_requirements(renderer.device, renderer.vertex_buffer)
+        memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
         desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
         memory_type_index := -1
         for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
@@ -246,11 +230,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // allocate index buffer memory and bind it
-        memory_requirements: vulkan.MemoryRequirements
-        vulkan.GetBufferMemoryRequirements(renderer.device, renderer.index_buffer, &memory_requirements)
-
-        memory_properties: vulkan.PhysicalDeviceMemoryProperties
-        vulkan.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
+        memory_requirements := vk.get_buffer_memory_requirements(renderer.device, renderer.index_buffer)
+        memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
         desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
         memory_type_index := -1
         for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
@@ -377,6 +358,9 @@ init_renderer :: proc() -> (renderer: Renderer) {
             nil,
             &renderer.fence_frame_finished,
         )
+	if frame_finished_fence_res != .SUCCESS {
+	    panic("failed to create frame finished fence")
+	}
     }
 
     return renderer
@@ -627,34 +611,12 @@ draw_frame :: proc(renderer: ^Renderer) {
 }
 
 create_swapchain :: proc(renderer: ^Renderer) {
-    surface_capabilities: vulkan.SurfaceCapabilitiesKHR
-    surface_query_res := vulkan.GetPhysicalDeviceSurfaceCapabilitiesKHR(
-        renderer.physical_device,
-        gc.vk_surface,
-        &surface_capabilities,
-    )
-
-    supported_present_mode_count: u32
-    get_supported_present_modes_res := vulkan.GetPhysicalDeviceSurfacePresentModesKHR(
-        renderer.physical_device,
-        gc.vk_surface,
-        &supported_present_mode_count,
-        nil,
-    )
-    if get_supported_present_modes_res != .SUCCESS {
-        panic("failed to get count of supported present modes")
+    surface_capabilities := vk.get_physical_device_surface_capabilities_khr(renderer.physical_device, gc.vk_surface)
+    supported_present_modes_res, supported_present_modes_count, supported_present_modes := vk.get_physical_device_surface_present_modes_khr(renderer.physical_device, gc.vk_surface)
+    if vk.not_success(supported_present_modes_res) {
+        vk.fatal("failed to get count of supported present modes", supported_present_modes_res, supported_present_modes_count)
     }
-    supported_present_modes := make([]vulkan.PresentModeKHR, supported_present_mode_count)
     defer delete(supported_present_modes)
-    get_supported_present_modes_res2 := vulkan.GetPhysicalDeviceSurfacePresentModesKHR(
-        renderer.physical_device,
-        gc.vk_surface,
-        &supported_present_mode_count,
-        raw_data(supported_present_modes),
-    )
-    if get_supported_present_modes_res2 != .SUCCESS {
-        panic("failed to get supported present modes")
-    }
     mailbox_supported := false
     for supported_mode in supported_present_modes {
         if supported_mode == .MAILBOX {
@@ -664,27 +626,11 @@ create_swapchain :: proc(renderer: ^Renderer) {
     }
     present_mode: vulkan.PresentModeKHR = .MAILBOX if mailbox_supported else .FIFO
 
-    supported_format_count: u32
-    get_supported_formats_res := vulkan.GetPhysicalDeviceSurfaceFormatsKHR(
-        renderer.physical_device,
-        gc.vk_surface,
-        &supported_format_count,
-        nil,
-    )
-    if get_supported_formats_res != .SUCCESS {
-        panic("failed to get count of supported surface formats")
+    get_supported_formats_res, supported_format_count, supported_formats := vk.get_physical_device_surface_formats_khr(renderer.physical_device, gc.vk_surface)
+    if vk.not_success(get_supported_formats_res) {
+        vk.fatal("failed to get count of supported surface formats", get_supported_formats_res, supported_format_count)
     }
-    supported_formats := make([]vulkan.SurfaceFormatKHR, supported_format_count)
     defer delete(supported_formats)
-    get_supported_formats_res2 := vulkan.GetPhysicalDeviceSurfaceFormatsKHR(
-        renderer.physical_device,
-        gc.vk_surface,
-        &supported_format_count,
-        raw_data(supported_formats),
-    )
-    if get_supported_formats_res2 != .SUCCESS || len(supported_formats) == 0 {
-        panic("failed to get supported surface formats")
-    }
 
     desired_format := vulkan.SurfaceFormatKHR {
         format     = .B8G8R8A8_SRGB,
@@ -720,20 +666,16 @@ create_swapchain :: proc(renderer: ^Renderer) {
     res := vulkan.CreateSwapchainKHR(renderer.device, &create_info, nil, &renderer.swapchain)
     if res != .SUCCESS {
         panic("failed to create swapchain")
-    }; renderer.swapchain_image_format = surface_image_format.format
+    }
+    renderer.swapchain_image_format = surface_image_format.format
 }
 
 create_swapchain_images :: proc(renderer: ^Renderer) {
-    count: u32
-    res := vulkan.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, nil)
-    if res != .SUCCESS {
-        panic("failed to get swapchain images count")
+    res, count, swapchain_images := vk.get_swapchain_images_khr(renderer.device, renderer.swapchain)
+    if vk.not_success(res) {
+	vk.fatal("failed to get swapchain images", res, count)
     }
-    renderer.swapchain_images = make([]vulkan.Image, count)
-    res2 := vulkan.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, raw_data(renderer.swapchain_images))
-    if res2 != .SUCCESS {
-        panic("failed to get swapchain images")
-    }
+    renderer.swapchain_images = swapchain_images
 }
 
 create_swapchain_image_views :: proc(renderer: ^Renderer) {
