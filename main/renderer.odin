@@ -111,7 +111,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             ppEnabledExtensionNames = raw_data(REQUIRED_DEVICE_EXTENSIONS),
         }
         res := vulkan.CreateDevice(renderer.physical_device, &create_info, nil, &renderer.device)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create logical device")
         }
     }
@@ -131,7 +131,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             queueFamilyIndex = renderer.queue_family_index,
         }
         res := vulkan.CreateCommandPool(renderer.device, &create_info, nil, &renderer.command_pool)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create command pool")
         }
     }
@@ -144,7 +144,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             commandBufferCount = 1,
         }
         res := vulkan.AllocateCommandBuffers(renderer.device, &allocate_info, &renderer.command_buffer)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to allocate command buffer")
         }
     }
@@ -158,7 +158,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             sharingMode = .EXCLUSIVE,
         }
         res := vulkan.CreateBuffer(renderer.device, &create_info, nil, &renderer.vertex_buffer)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create vertex buffer")
         }
     }
@@ -186,12 +186,12 @@ init_renderer :: proc() -> (renderer: Renderer) {
             memoryTypeIndex = cast(u32)memory_type_index,
         }
         res := vulkan.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.vertex_buffer_memory)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to allocate vertex buffer memory")
         }
 
         bind_res := vulkan.BindBufferMemory(renderer.device, renderer.vertex_buffer, renderer.vertex_buffer_memory, 0)
-        if bind_res != .SUCCESS {
+        if vk.not_success(bind_res) {
             panic("failed to bind vertex buffer memory")
         }
     }
@@ -224,7 +224,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             sharingMode = .EXCLUSIVE,
         }
         res := vulkan.CreateBuffer(renderer.device, &create_info, nil, &renderer.index_buffer)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create index buffer")
         }
     }
@@ -252,12 +252,12 @@ init_renderer :: proc() -> (renderer: Renderer) {
             memoryTypeIndex = cast(u32)memory_type_index,
         }
         res := vulkan.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.index_buffer_memory)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to allocate index buffer memory")
         }
 
         bind_res := vulkan.BindBufferMemory(renderer.device, renderer.index_buffer, renderer.index_buffer_memory, 0)
-        if bind_res != .SUCCESS {
+        if vk.not_success(bind_res) {
             panic("failed to bind index buffer memory")
         }
     }
@@ -293,7 +293,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             pCode    = cast(^u32)raw_data(data),
         }
         res := vulkan.CreateShaderModule(renderer.device, &create_info, nil, &renderer.vertex_shader_module)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create vertex shader module")
         }
     }
@@ -310,7 +310,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             pCode    = cast(^u32)raw_data(data),
         }
         res := vulkan.CreateShaderModule(renderer.device, &create_info, nil, &renderer.fragment_shader_module)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create fragment shader module")
         }
     }
@@ -329,7 +329,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
                 nil,
                 &renderer.semaphores_draw_finished[i],
             )
-            if draw_finished_semaphore_res != .SUCCESS {
+            if vk.not_success(draw_finished_semaphore_res) {
                 panic("failed to create draw finished semaphore")
             }
         }
@@ -344,7 +344,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             nil,
             &renderer.fence_image_acquired,
         )
-        if image_acquired_fence_res != .SUCCESS {
+        if vk.not_success(image_acquired_fence_res) {
             panic("failed to create image acquired fence")
         }
 
@@ -358,7 +358,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             nil,
             &renderer.fence_frame_finished,
         )
-	if frame_finished_fence_res != .SUCCESS {
+	if vk.not_success(frame_finished_fence_res) {
 	    panic("failed to create frame finished fence")
 	}
     }
@@ -401,12 +401,12 @@ draw_frame :: proc(renderer: ^Renderer) {
 
     {     // ensure previous frame finished before we start
         wait_res := vulkan.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
-        if wait_res != .SUCCESS {
+        if vk.not_success(wait_res) {
             panic("failed to wait for frame fence")
         }
 
         reset_res := vulkan.ResetFences(renderer.device, 1, &renderer.fence_frame_finished)
-        if reset_res != .SUCCESS {
+        if vk.not_success(reset_res) {
             panic("failed to reset frame fence")
         }
     }
@@ -423,17 +423,17 @@ draw_frame :: proc(renderer: ^Renderer) {
         )
         if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
             // fmt.println("swapchain out of date / suboptimal on acquire next image")
-        } else if res != .SUCCESS {
+        } else if vk.not_success(res) {
             panic("failed to get next swapchain image")
         }
 
         wait_res := vulkan.WaitForFences(renderer.device, 1, &renderer.fence_image_acquired, true, max(u64))
-        if wait_res != .SUCCESS {
+        if vk.not_success(wait_res) {
             panic("failed to wait for image acquired fence")
         }
 
         reset_res := vulkan.ResetFences(renderer.device, 1, &renderer.fence_image_acquired)
-        if reset_res != .SUCCESS {
+        if vk.not_success(reset_res) {
             panic("failed to reset image acquired fence")
         }
     }
@@ -444,7 +444,7 @@ draw_frame :: proc(renderer: ^Renderer) {
             flags = {.ONE_TIME_SUBMIT},
         }
         res := vulkan.BeginCommandBuffer(renderer.command_buffer, &begin_info)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to begin command buffer")
         }
     }
@@ -572,7 +572,7 @@ draw_frame :: proc(renderer: ^Renderer) {
 
     {     // end recording command buffer
         res := vulkan.EndCommandBuffer(renderer.command_buffer)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to end command buffer")
         }
     }
@@ -586,7 +586,7 @@ draw_frame :: proc(renderer: ^Renderer) {
             pSignalSemaphores    = &renderer.semaphores_draw_finished[swapchain_image_index],
         }
         res := vulkan.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to submit command")
         }
     }
@@ -604,7 +604,7 @@ draw_frame :: proc(renderer: ^Renderer) {
         res := vulkan.QueuePresentKHR(renderer.queue, &present_info)
         if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
             // fmt.println("swapchain out of date / suboptimal on queue present")
-        } else if res != .SUCCESS {
+        } else if vk.not_success(res) {
             panic("failed to present image")
         }
     }
@@ -664,7 +664,7 @@ create_swapchain :: proc(renderer: ^Renderer) {
         clipped          = true,
     }
     res := vulkan.CreateSwapchainKHR(renderer.device, &create_info, nil, &renderer.swapchain)
-    if res != .SUCCESS {
+    if vk.not_success(res) {
         panic("failed to create swapchain")
     }
     renderer.swapchain_image_format = surface_image_format.format
@@ -697,7 +697,7 @@ create_swapchain_image_views :: proc(renderer: ^Renderer) {
             },
         }
         res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.swapchain_image_views[i])
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("failed to create swapchain image views")
         }
     }}
@@ -789,7 +789,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         nil,
         &pipeline_layout,
     )
-    if pipeline_layout_create_res != .SUCCESS {
+    if vk.not_success(pipeline_layout_create_res) {
         panic("failed to create pipeline layout")
     }
 
@@ -833,7 +833,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
 
 handle_screen_resized :: proc(renderer: ^Renderer) {
     wait_res := vulkan.DeviceWaitIdle(renderer.device)
-    if wait_res != .SUCCESS {
+    if vk.not_success(wait_res) {
         panic("failed wait for idle")
     }
 

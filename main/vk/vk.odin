@@ -18,7 +18,7 @@ not_success :: proc(res: v.Result) -> bool {
 
 enumerate_physical_devices :: proc(instance: v.Instance) -> (res: v.Result, count: u32, lst: []v.PhysicalDevice) {
     res = v.EnumeratePhysicalDevices(instance, &count, nil)
-    if res != .SUCCESS {
+    if not_success(res) {
 	return
     }
 

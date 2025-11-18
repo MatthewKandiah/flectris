@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:math/linalg/glsl"
 import "vendor:glfw"
 import "vendor:vulkan"
+import "vk"
 
 WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
@@ -89,15 +90,15 @@ main :: proc() {
             enabledLayerCount       = cast(u32)len(ENABLED_LAYERS),
             ppEnabledLayerNames     = raw_data(ENABLED_LAYERS),
         }
-        if err := vulkan.CreateInstance(&instance_create_info, nil, &gc.vk_instance); err != .SUCCESS {
-            fmt.eprintln(err)
+        if res := vulkan.CreateInstance(&instance_create_info, nil, &gc.vk_instance); vk.not_success(res) {
+            fmt.eprintln(res)
             panic("create instance failed")
         }
     }
 
     {     // create Vulkan WSI surface
         res := glfw.CreateWindowSurface(gc.vk_instance, gc.window, nil, &gc.vk_surface)
-        if res != .SUCCESS {
+        if vk.not_success(res) {
             panic("create vk khr window surface failed")
         }
     }
