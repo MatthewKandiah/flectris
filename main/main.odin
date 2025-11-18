@@ -4,22 +4,22 @@ import "base:runtime"
 import "core:fmt"
 import "core:math/linalg/glsl"
 import "vendor:glfw"
-import vk "vendor:vulkan"
+import "vendor:vulkan"
 
 WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
 APP_NAME :: "Flectris"
 ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
 REQUIRED_DEVICE_EXTENSIONS := []cstring {
-    vk.KHR_SWAPCHAIN_EXTENSION_NAME,
-    vk.KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-    vk.KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,
+    vulkan.KHR_SWAPCHAIN_EXTENSION_NAME,
+    vulkan.KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+    vulkan.KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,
 }
 GlobalContext :: struct {
     window:         glfw.WindowHandle,
     window_resized: bool,
-    vk_surface:     vk.SurfaceKHR,
-    vk_instance:    vk.Instance,
+    vk_surface:     vulkan.SurfaceKHR,
+    vk_instance:    vulkan.Instance,
 }
 gc: GlobalContext
 
@@ -68,20 +68,20 @@ main :: proc() {
     glfw.SetWindowSizeCallback(gc.window, window_size_callback)
 
     {     // initialise Vulkan instance
-        vk.load_proc_addresses(get_proc_address)
-        application_info := vk.ApplicationInfo {
+        vulkan.load_proc_addresses(get_proc_address)
+        application_info := vulkan.ApplicationInfo {
             sType              = .APPLICATION_INFO,
             pApplicationName   = APP_NAME,
-            applicationVersion = vk.MAKE_VERSION(1, 0, 0),
+            applicationVersion = vulkan.MAKE_VERSION(1, 0, 0),
             pEngineName        = "None",
-            engineVersion      = vk.MAKE_VERSION(1, 0, 0),
-            apiVersion         = vk.API_VERSION_1_3,
+            engineVersion      = vulkan.MAKE_VERSION(1, 0, 0),
+            apiVersion         = vulkan.API_VERSION_1_3,
         }
         glfw_required_instance_extensions := glfw.GetRequiredInstanceExtensions()
         if len(glfw_required_instance_extensions) == 0 {
             panic("get required instance extensions failed - can't present to a window surface on this system")
         }
-        instance_create_info := vk.InstanceCreateInfo {
+        instance_create_info := vulkan.InstanceCreateInfo {
             sType                   = .INSTANCE_CREATE_INFO,
             pApplicationInfo        = &application_info,
             enabledExtensionCount   = cast(u32)len(glfw_required_instance_extensions),
@@ -89,7 +89,7 @@ main :: proc() {
             enabledLayerCount       = cast(u32)len(ENABLED_LAYERS),
             ppEnabledLayerNames     = raw_data(ENABLED_LAYERS),
         }
-        if err := vk.CreateInstance(&instance_create_info, nil, &gc.vk_instance); err != .SUCCESS {
+        if err := vulkan.CreateInstance(&instance_create_info, nil, &gc.vk_instance); err != .SUCCESS {
             fmt.eprintln(err)
             panic("create instance failed")
         }

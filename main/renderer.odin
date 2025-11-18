@@ -4,55 +4,55 @@ import "base:intrinsics"
 import "core:fmt"
 import "core:os"
 import "vendor:glfw"
-import vk "vendor:vulkan"
+import "vendor:vulkan"
 
 VERTEX_SHADER_PATH :: "vert.spv"
 FRAGMENT_SHADER_PATH :: "frag.spv"
 
 Renderer :: struct {
-    physical_device:             vk.PhysicalDevice,
+    physical_device:             vulkan.PhysicalDevice,
     queue_family_index:          u32,
-    queue:                       vk.Queue,
-    device:                      vk.Device,
-    swapchain:                   vk.SwapchainKHR,
-    swapchain_images:            []vk.Image,
-    swapchain_image_views:       []vk.ImageView,
-    swapchain_image_format:      vk.Format,
-    vertex_buffer:               vk.Buffer,
-    vertex_buffer_memory:        vk.DeviceMemory,
+    queue:                       vulkan.Queue,
+    device:                      vulkan.Device,
+    swapchain:                   vulkan.SwapchainKHR,
+    swapchain_images:            []vulkan.Image,
+    swapchain_image_views:       []vulkan.ImageView,
+    swapchain_image_format:      vulkan.Format,
+    vertex_buffer:               vulkan.Buffer,
+    vertex_buffer_memory:        vulkan.DeviceMemory,
     vertex_buffer_memory_mapped: rawptr,
-    index_buffer:                vk.Buffer,
-    index_buffer_memory:         vk.DeviceMemory,
+    index_buffer:                vulkan.Buffer,
+    index_buffer_memory:         vulkan.DeviceMemory,
     index_buffer_memory_mapped:  rawptr,
-    fragment_shader_module:      vk.ShaderModule,
-    vertex_shader_module:        vk.ShaderModule,
-    graphics_pipeline:           vk.Pipeline,
-    surface_extent:              vk.Extent2D,
-    command_pool:                vk.CommandPool,
-    command_buffer:              vk.CommandBuffer,
-    semaphores_draw_finished:    []vk.Semaphore,
-    fence_image_acquired:        vk.Fence,
-    fence_frame_finished:        vk.Fence,
+    fragment_shader_module:      vulkan.ShaderModule,
+    vertex_shader_module:        vulkan.ShaderModule,
+    graphics_pipeline:           vulkan.Pipeline,
+    surface_extent:              vulkan.Extent2D,
+    command_pool:                vulkan.CommandPool,
+    command_buffer:              vulkan.CommandBuffer,
+    semaphores_draw_finished:    []vulkan.Semaphore,
+    fence_image_acquired:        vulkan.Fence,
+    fence_frame_finished:        vulkan.Fence,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
     {     // pick a physical device
         count: u32
-        res: vk.Result
-        res = vk.EnumeratePhysicalDevices(gc.vk_instance, &count, nil)
+        res: vulkan.Result
+        res = vulkan.EnumeratePhysicalDevices(gc.vk_instance, &count, nil)
         if res != .SUCCESS {
             panic("enumerate physical devices failed")
         }
-        physical_devices := make([]vk.PhysicalDevice, count)
+        physical_devices := make([]vulkan.PhysicalDevice, count)
         defer delete(physical_devices)
-        res = vk.EnumeratePhysicalDevices(gc.vk_instance, &count, raw_data(physical_devices))
+        res = vulkan.EnumeratePhysicalDevices(gc.vk_instance, &count, raw_data(physical_devices))
         if res != .SUCCESS {
             panic("enumerate physical devices second call failed")
         }
 
         for device in physical_devices {
-            properties: vk.PhysicalDeviceProperties
-            vk.GetPhysicalDeviceProperties(device, &properties)
+            properties: vulkan.PhysicalDeviceProperties
+            vulkan.GetPhysicalDeviceProperties(device, &properties)
 
             if properties.deviceType == .DISCRETE_GPU ||
                (renderer.physical_device == nil && properties.deviceType == .INTEGRATED_GPU) {
@@ -66,10 +66,10 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
     {     // pick a device queue index
         count: u32
-        vk.GetPhysicalDeviceQueueFamilyProperties(renderer.physical_device, &count, nil)
-        queue_families_properties := make([]vk.QueueFamilyProperties, count)
+        vulkan.GetPhysicalDeviceQueueFamilyProperties(renderer.physical_device, &count, nil)
+        queue_families_properties := make([]vulkan.QueueFamilyProperties, count)
         defer delete(queue_families_properties)
-        vk.GetPhysicalDeviceQueueFamilyProperties(
+        vulkan.GetPhysicalDeviceQueueFamilyProperties(
             renderer.physical_device,
             &count,
             raw_data(queue_families_properties),
@@ -78,7 +78,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         found := false
         for queue_family_properties, index in queue_families_properties {
             graphics_and_transfer_supported :=
-                vk.QueueFlags{.GRAPHICS, .TRANSFER} <= queue_family_properties.queueFlags
+                vulkan.QueueFlags{.GRAPHICS, .TRANSFER} <= queue_family_properties.queueFlags
             present_supported := glfw.GetPhysicalDevicePresentationSupport(
                 gc.vk_instance,
                 renderer.physical_device,
@@ -96,26 +96,26 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
     {     // make a logical device
         priorities := []f32{1}
-        queue_create_info := vk.DeviceQueueCreateInfo {
+        queue_create_info := vulkan.DeviceQueueCreateInfo {
             sType            = .DEVICE_QUEUE_CREATE_INFO,
             queueFamilyIndex = renderer.queue_family_index,
             queueCount       = 1,
             pQueuePriorities = raw_data(priorities),
         }
 
-        dynamic_rendering_local_read := vk.PhysicalDeviceDynamicRenderingLocalReadFeatures {
+        dynamic_rendering_local_read := vulkan.PhysicalDeviceDynamicRenderingLocalReadFeatures {
             sType                     = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES,
             pNext                     = nil,
             dynamicRenderingLocalRead = true,
         }
 
-        dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeatures {
+        dynamic_rendering_features := vulkan.PhysicalDeviceDynamicRenderingFeatures {
             sType            = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
             pNext            = &dynamic_rendering_local_read,
             dynamicRendering = true,
         }
 
-        create_info := vk.DeviceCreateInfo {
+        create_info := vulkan.DeviceCreateInfo {
             sType                   = .DEVICE_CREATE_INFO,
             pNext                   = &dynamic_rendering_features,
             queueCreateInfoCount    = 1,
@@ -123,14 +123,14 @@ init_renderer :: proc() -> (renderer: Renderer) {
             enabledExtensionCount   = cast(u32)len(REQUIRED_DEVICE_EXTENSIONS),
             ppEnabledExtensionNames = raw_data(REQUIRED_DEVICE_EXTENSIONS),
         }
-        res := vk.CreateDevice(renderer.physical_device, &create_info, nil, &renderer.device)
+        res := vulkan.CreateDevice(renderer.physical_device, &create_info, nil, &renderer.device)
         if res != .SUCCESS {
             panic("failed to create logical device")
         }
     }
 
     {     // retrieve queue handle
-        vk.GetDeviceQueue(renderer.device, renderer.queue_family_index, 0, &renderer.queue)
+        vulkan.GetDeviceQueue(renderer.device, renderer.queue_family_index, 0, &renderer.queue)
     }
 
     create_swapchain(&renderer)
@@ -138,51 +138,51 @@ init_renderer :: proc() -> (renderer: Renderer) {
     create_swapchain_image_views(&renderer)
 
     {     // create command pool
-        create_info := vk.CommandPoolCreateInfo {
+        create_info := vulkan.CommandPoolCreateInfo {
             sType            = .COMMAND_POOL_CREATE_INFO,
             flags            = {.RESET_COMMAND_BUFFER},
             queueFamilyIndex = renderer.queue_family_index,
         }
-        res := vk.CreateCommandPool(renderer.device, &create_info, nil, &renderer.command_pool)
+        res := vulkan.CreateCommandPool(renderer.device, &create_info, nil, &renderer.command_pool)
         if res != .SUCCESS {
             panic("failed to create command pool")
         }
     }
 
     {     // allocate a command buffer
-        allocate_info := vk.CommandBufferAllocateInfo {
+        allocate_info := vulkan.CommandBufferAllocateInfo {
             sType              = .COMMAND_BUFFER_ALLOCATE_INFO,
             commandPool        = renderer.command_pool,
             level              = .PRIMARY,
             commandBufferCount = 1,
         }
-        res := vk.AllocateCommandBuffers(renderer.device, &allocate_info, &renderer.command_buffer)
+        res := vulkan.AllocateCommandBuffers(renderer.device, &allocate_info, &renderer.command_buffer)
         if res != .SUCCESS {
             panic("failed to allocate command buffer")
         }
     }
 
     {     // create vertex buffer
-        create_info := vk.BufferCreateInfo {
+        create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
             flags       = {},
-            size        = cast(vk.DeviceSize)(size_of(Vertex) * len(vertices)),
+            size        = cast(vulkan.DeviceSize)(size_of(Vertex) * len(vertices)),
             usage       = {.VERTEX_BUFFER},
             sharingMode = .EXCLUSIVE,
         }
-        res := vk.CreateBuffer(renderer.device, &create_info, nil, &renderer.vertex_buffer)
+        res := vulkan.CreateBuffer(renderer.device, &create_info, nil, &renderer.vertex_buffer)
         if res != .SUCCESS {
             panic("failed to create vertex buffer")
         }
     }
 
     {     // allocate vertex buffer memory and bind it
-        memory_requirements: vk.MemoryRequirements
-        vk.GetBufferMemoryRequirements(renderer.device, renderer.vertex_buffer, &memory_requirements)
+        memory_requirements: vulkan.MemoryRequirements
+        vulkan.GetBufferMemoryRequirements(renderer.device, renderer.vertex_buffer, &memory_requirements)
 
-        memory_properties: vk.PhysicalDeviceMemoryProperties
-        vk.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
-        desired_memory_type_properties := vk.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
+        memory_properties: vulkan.PhysicalDeviceMemoryProperties
+        vulkan.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
+        desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
         memory_type_index := -1
         for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
             physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
@@ -196,28 +196,28 @@ init_renderer :: proc() -> (renderer: Renderer) {
             panic("failed to find a suitable memory type for vertex buffer allocation")
         }
 
-        allocate_info := vk.MemoryAllocateInfo {
+        allocate_info := vulkan.MemoryAllocateInfo {
             sType           = .MEMORY_ALLOCATE_INFO,
             allocationSize  = memory_requirements.size,
             memoryTypeIndex = cast(u32)memory_type_index,
         }
-        res := vk.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.vertex_buffer_memory)
+        res := vulkan.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.vertex_buffer_memory)
         if res != .SUCCESS {
             panic("failed to allocate vertex buffer memory")
         }
 
-        bind_res := vk.BindBufferMemory(renderer.device, renderer.vertex_buffer, renderer.vertex_buffer_memory, 0)
+        bind_res := vulkan.BindBufferMemory(renderer.device, renderer.vertex_buffer, renderer.vertex_buffer_memory, 0)
         if bind_res != .SUCCESS {
             panic("failed to bind vertex buffer memory")
         }
     }
 
     {     // map vertex buffer memory
-        res := vk.MapMemory(
+        res := vulkan.MapMemory(
             renderer.device,
             renderer.vertex_buffer_memory,
             0,
-            cast(vk.DeviceSize)vk.WHOLE_SIZE,
+            cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
             {},
             &renderer.vertex_buffer_memory_mapped,
         )
@@ -232,26 +232,26 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // create index buffer
-        create_info := vk.BufferCreateInfo {
+        create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
             flags       = {},
-            size        = cast(vk.DeviceSize)(size_of(u32) * len(indices)),
+            size        = cast(vulkan.DeviceSize)(size_of(u32) * len(indices)),
             usage       = {.INDEX_BUFFER},
             sharingMode = .EXCLUSIVE,
         }
-        res := vk.CreateBuffer(renderer.device, &create_info, nil, &renderer.index_buffer)
+        res := vulkan.CreateBuffer(renderer.device, &create_info, nil, &renderer.index_buffer)
         if res != .SUCCESS {
             panic("failed to create index buffer")
         }
     }
 
     {     // allocate index buffer memory and bind it
-        memory_requirements: vk.MemoryRequirements
-        vk.GetBufferMemoryRequirements(renderer.device, renderer.index_buffer, &memory_requirements)
+        memory_requirements: vulkan.MemoryRequirements
+        vulkan.GetBufferMemoryRequirements(renderer.device, renderer.index_buffer, &memory_requirements)
 
-        memory_properties: vk.PhysicalDeviceMemoryProperties
-        vk.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
-        desired_memory_type_properties := vk.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
+        memory_properties: vulkan.PhysicalDeviceMemoryProperties
+        vulkan.GetPhysicalDeviceMemoryProperties(renderer.physical_device, &memory_properties)
+        desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
         memory_type_index := -1
         for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
             physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
@@ -265,28 +265,28 @@ init_renderer :: proc() -> (renderer: Renderer) {
             panic("failed to find a suitable memory type for index buffer allocation")
         }
 
-        allocate_info := vk.MemoryAllocateInfo {
+        allocate_info := vulkan.MemoryAllocateInfo {
             sType           = .MEMORY_ALLOCATE_INFO,
             allocationSize  = memory_requirements.size,
             memoryTypeIndex = cast(u32)memory_type_index,
         }
-        res := vk.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.index_buffer_memory)
+        res := vulkan.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.index_buffer_memory)
         if res != .SUCCESS {
             panic("failed to allocate index buffer memory")
         }
 
-        bind_res := vk.BindBufferMemory(renderer.device, renderer.index_buffer, renderer.index_buffer_memory, 0)
+        bind_res := vulkan.BindBufferMemory(renderer.device, renderer.index_buffer, renderer.index_buffer_memory, 0)
         if bind_res != .SUCCESS {
             panic("failed to bind index buffer memory")
         }
     }
 
     {     // map index buffer memory
-        res := vk.MapMemory(
+        res := vulkan.MapMemory(
             renderer.device,
             renderer.index_buffer_memory,
             0,
-            cast(vk.DeviceSize)vk.WHOLE_SIZE,
+            cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
             {},
             &renderer.index_buffer_memory_mapped,
         )
@@ -306,12 +306,12 @@ init_renderer :: proc() -> (renderer: Renderer) {
             fmt.eprintln("Error reading vertex shader file", err)
             panic("Failed to read vertex shader file")
         }
-        create_info := vk.ShaderModuleCreateInfo {
+        create_info := vulkan.ShaderModuleCreateInfo {
             sType    = .SHADER_MODULE_CREATE_INFO,
             codeSize = len(data),
             pCode    = cast(^u32)raw_data(data),
         }
-        res := vk.CreateShaderModule(renderer.device, &create_info, nil, &renderer.vertex_shader_module)
+        res := vulkan.CreateShaderModule(renderer.device, &create_info, nil, &renderer.vertex_shader_module)
         if res != .SUCCESS {
             panic("failed to create vertex shader module")
         }
@@ -323,12 +323,12 @@ init_renderer :: proc() -> (renderer: Renderer) {
             fmt.eprintln("Error reading fragment shader file", err)
             panic("Failed to read fragment shader file")
         }
-        create_info := vk.ShaderModuleCreateInfo {
+        create_info := vulkan.ShaderModuleCreateInfo {
             sType    = .SHADER_MODULE_CREATE_INFO,
             codeSize = len(data),
             pCode    = cast(^u32)raw_data(data),
         }
-        res := vk.CreateShaderModule(renderer.device, &create_info, nil, &renderer.fragment_shader_module)
+        res := vulkan.CreateShaderModule(renderer.device, &create_info, nil, &renderer.fragment_shader_module)
         if res != .SUCCESS {
             panic("failed to create fragment shader module")
         }
@@ -337,12 +337,12 @@ init_renderer :: proc() -> (renderer: Renderer) {
     create_graphics_pipeline(&renderer)
 
     {     // create synchronisation objects
-        semaphore_create_info := vk.SemaphoreCreateInfo {
+        semaphore_create_info := vulkan.SemaphoreCreateInfo {
             sType = .SEMAPHORE_CREATE_INFO,
         }
-        renderer.semaphores_draw_finished = make([]vk.Semaphore, len(renderer.swapchain_images))
+        renderer.semaphores_draw_finished = make([]vulkan.Semaphore, len(renderer.swapchain_images))
         for i in 0 ..< len(renderer.swapchain_images) {
-            draw_finished_semaphore_res := vk.CreateSemaphore(
+            draw_finished_semaphore_res := vulkan.CreateSemaphore(
                 renderer.device,
                 &semaphore_create_info,
                 nil,
@@ -353,11 +353,11 @@ init_renderer :: proc() -> (renderer: Renderer) {
             }
         }
 
-        image_acquired_fence_create_info := vk.FenceCreateInfo {
+        image_acquired_fence_create_info := vulkan.FenceCreateInfo {
             sType = .FENCE_CREATE_INFO,
             flags = {},
         }
-        image_acquired_fence_res := vk.CreateFence(
+        image_acquired_fence_res := vulkan.CreateFence(
             renderer.device,
             &image_acquired_fence_create_info,
             nil,
@@ -367,11 +367,11 @@ init_renderer :: proc() -> (renderer: Renderer) {
             panic("failed to create image acquired fence")
         }
 
-        frame_fence_create_info := vk.FenceCreateInfo {
+        frame_fence_create_info := vulkan.FenceCreateInfo {
             sType = .FENCE_CREATE_INFO,
             flags = {.SIGNALED},
         }
-        frame_finished_fence_res := vk.CreateFence(
+        frame_finished_fence_res := vulkan.CreateFence(
             renderer.device,
             &frame_fence_create_info,
             nil,
@@ -384,29 +384,29 @@ init_renderer :: proc() -> (renderer: Renderer) {
 
 deinit_renderer :: proc(using renderer: ^Renderer) {
     for i in 0 ..< len(swapchain_images) {
-        vk.DestroySemaphore(device, semaphores_draw_finished[i], nil)
+        vulkan.DestroySemaphore(device, semaphores_draw_finished[i], nil)
     }
     delete(semaphores_draw_finished)
-    vk.DestroyFence(device, fence_image_acquired, nil)
-    vk.DestroyFence(device, fence_frame_finished, nil)
-    vk.DestroyCommandPool(device, command_pool, nil)
-    vk.DestroyShaderModule(device, vertex_shader_module, nil)
-    vk.DestroyBuffer(device, vertex_buffer, nil)
-    vk.DestroyBuffer(device, index_buffer, nil)
+    vulkan.DestroyFence(device, fence_image_acquired, nil)
+    vulkan.DestroyFence(device, fence_frame_finished, nil)
+    vulkan.DestroyCommandPool(device, command_pool, nil)
+    vulkan.DestroyShaderModule(device, vertex_shader_module, nil)
+    vulkan.DestroyBuffer(device, vertex_buffer, nil)
+    vulkan.DestroyBuffer(device, index_buffer, nil)
     renderer.vertex_buffer_memory_mapped = nil
     renderer.index_buffer_memory_mapped = nil
-    vk.UnmapMemory(device, vertex_buffer_memory)
-    vk.UnmapMemory(device, index_buffer_memory)
-    vk.FreeMemory(device, vertex_buffer_memory, nil)
-    vk.FreeMemory(device, index_buffer_memory, nil)
+    vulkan.UnmapMemory(device, vertex_buffer_memory)
+    vulkan.UnmapMemory(device, index_buffer_memory)
+    vulkan.FreeMemory(device, vertex_buffer_memory, nil)
+    vulkan.FreeMemory(device, index_buffer_memory, nil)
     for image_view in swapchain_image_views {
-        vk.DestroyImageView(device, image_view, nil)
+        vulkan.DestroyImageView(device, image_view, nil)
     }
     delete(swapchain_image_views)
     delete(swapchain_images)
-    vk.DestroySwapchainKHR(device, swapchain, nil)
-    vk.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
-    vk.DestroyDevice(device, nil)
+    vulkan.DestroySwapchainKHR(device, swapchain, nil)
+    vulkan.DestroySurfaceKHR(gc.vk_instance, gc.vk_surface, nil)
+    vulkan.DestroyDevice(device, nil)
 }
 
 draw_frame :: proc(renderer: ^Renderer) {
@@ -416,12 +416,12 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
 
     {     // ensure previous frame finished before we start
-        wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
+        wait_res := vulkan.WaitForFences(renderer.device, 1, &renderer.fence_frame_finished, true, max(u64))
         if wait_res != .SUCCESS {
             panic("failed to wait for frame fence")
         }
 
-        reset_res := vk.ResetFences(renderer.device, 1, &renderer.fence_frame_finished)
+        reset_res := vulkan.ResetFences(renderer.device, 1, &renderer.fence_frame_finished)
         if reset_res != .SUCCESS {
             panic("failed to reset frame fence")
         }
@@ -429,7 +429,7 @@ draw_frame :: proc(renderer: ^Renderer) {
 
     swapchain_image_index: u32
     {     // get next swapchain image
-        res := vk.AcquireNextImageKHR(
+        res := vulkan.AcquireNextImageKHR(
             renderer.device,
             renderer.swapchain,
             max(u64),
@@ -443,44 +443,44 @@ draw_frame :: proc(renderer: ^Renderer) {
             panic("failed to get next swapchain image")
         }
 
-        wait_res := vk.WaitForFences(renderer.device, 1, &renderer.fence_image_acquired, true, max(u64))
+        wait_res := vulkan.WaitForFences(renderer.device, 1, &renderer.fence_image_acquired, true, max(u64))
         if wait_res != .SUCCESS {
             panic("failed to wait for image acquired fence")
         }
 
-        reset_res := vk.ResetFences(renderer.device, 1, &renderer.fence_image_acquired)
+        reset_res := vulkan.ResetFences(renderer.device, 1, &renderer.fence_image_acquired)
         if reset_res != .SUCCESS {
             panic("failed to reset image acquired fence")
         }
     }
 
     {     // begin recording commands
-        begin_info := vk.CommandBufferBeginInfo {
+        begin_info := vulkan.CommandBufferBeginInfo {
             sType = .COMMAND_BUFFER_BEGIN_INFO,
             flags = {.ONE_TIME_SUBMIT},
         }
-        res := vk.BeginCommandBuffer(renderer.command_buffer, &begin_info)
+        res := vulkan.BeginCommandBuffer(renderer.command_buffer, &begin_info)
         if res != .SUCCESS {
             panic("failed to begin command buffer")
         }
     }
 
-    clear_value := vk.ClearColorValue {
+    clear_value := vulkan.ClearColorValue {
         float32 = [4]f32{1, 0, 1, 1},
     }
 
-    color_attachment := vk.RenderingAttachmentInfo {
+    color_attachment := vulkan.RenderingAttachmentInfo {
         sType = .RENDERING_ATTACHMENT_INFO,
         imageView = renderer.swapchain_image_views[swapchain_image_index],
         imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
         resolveMode = {},
         loadOp = .CLEAR,
         storeOp = .STORE,
-        clearValue = vk.ClearValue{color = clear_value},
+        clearValue = vulkan.ClearValue{color = clear_value},
     }
 
     {     // memory barrier transition to fragment shader output writable
-        memory_barrier_to_write := vk.ImageMemoryBarrier {
+        memory_barrier_to_write := vulkan.ImageMemoryBarrier {
             sType = .IMAGE_MEMORY_BARRIER,
             srcAccessMask = {},
             dstAccessMask = {.COLOR_ATTACHMENT_WRITE},
@@ -489,7 +489,7 @@ draw_frame :: proc(renderer: ^Renderer) {
             srcQueueFamilyIndex = renderer.queue_family_index,
             dstQueueFamilyIndex = renderer.queue_family_index,
             image = renderer.swapchain_images[swapchain_image_index],
-            subresourceRange = vk.ImageSubresourceRange {
+            subresourceRange = vulkan.ImageSubresourceRange {
                 aspectMask = {.COLOR},
                 baseMipLevel = 0,
                 levelCount = 1,
@@ -497,7 +497,7 @@ draw_frame :: proc(renderer: ^Renderer) {
                 layerCount = 1,
             },
         }
-        vk.CmdPipelineBarrier(
+        vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
             srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
             dstStageMask = {.COLOR_ATTACHMENT_OUTPUT},
@@ -512,7 +512,7 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
 
     {     // memory barrier transition to presentable
-        memory_barrier_to_present := vk.ImageMemoryBarrier {
+        memory_barrier_to_present := vulkan.ImageMemoryBarrier {
             sType = .IMAGE_MEMORY_BARRIER,
             srcAccessMask = {},
             dstAccessMask = {},
@@ -521,7 +521,7 @@ draw_frame :: proc(renderer: ^Renderer) {
             srcQueueFamilyIndex = renderer.queue_family_index,
             dstQueueFamilyIndex = renderer.queue_family_index,
             image = renderer.swapchain_images[swapchain_image_index],
-            subresourceRange = vk.ImageSubresourceRange {
+            subresourceRange = vulkan.ImageSubresourceRange {
                 aspectMask = {.COLOR},
                 baseMipLevel = 0,
                 levelCount = 1,
@@ -529,7 +529,7 @@ draw_frame :: proc(renderer: ^Renderer) {
                 layerCount = 1,
             },
         }
-        vk.CmdPipelineBarrier(
+        vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
             srcStageMask = {.BOTTOM_OF_PIPE},
             dstStageMask = {.BOTTOM_OF_PIPE},
@@ -543,24 +543,24 @@ draw_frame :: proc(renderer: ^Renderer) {
         )
     }
 
-    rendering_info := vk.RenderingInfo {
+    rendering_info := vulkan.RenderingInfo {
         sType = .RENDERING_INFO,
-        renderArea = vk.Rect2D{offset = vk.Offset2D{0, 0}, extent = renderer.surface_extent},
+        renderArea = vulkan.Rect2D{offset = vulkan.Offset2D{0, 0}, extent = renderer.surface_extent},
         layerCount = 1,
         viewMask = 0,
         colorAttachmentCount = 1,
         pColorAttachments = &color_attachment,
     }
-    vk.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
+    vulkan.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
 
-    vk.CmdBindPipeline(
+    vulkan.CmdBindPipeline(
         commandBuffer = renderer.command_buffer,
         pipelineBindPoint = .GRAPHICS,
         pipeline = renderer.graphics_pipeline,
     )
 
-    offsets := []vk.DeviceSize{0}
-    vk.CmdBindVertexBuffers(
+    offsets := []vulkan.DeviceSize{0}
+    vulkan.CmdBindVertexBuffers(
         commandBuffer = renderer.command_buffer,
         firstBinding = 0,
         bindingCount = 1,
@@ -568,14 +568,14 @@ draw_frame :: proc(renderer: ^Renderer) {
         pOffsets = raw_data(offsets),
     )
 
-    vk.CmdBindIndexBuffer(
+    vulkan.CmdBindIndexBuffer(
         commandBuffer = renderer.command_buffer,
         buffer = renderer.index_buffer,
         offset = 0,
         indexType = .UINT32,
     )
 
-    vk.CmdDrawIndexed(
+    vulkan.CmdDrawIndexed(
         commandBuffer = renderer.command_buffer,
         indexCount = cast(u32)len(indices),
         instanceCount = 1,
@@ -584,31 +584,31 @@ draw_frame :: proc(renderer: ^Renderer) {
         firstInstance = 0,
     )
 
-    vk.CmdEndRendering(renderer.command_buffer)
+    vulkan.CmdEndRendering(renderer.command_buffer)
 
     {     // end recording command buffer
-        res := vk.EndCommandBuffer(renderer.command_buffer)
+        res := vulkan.EndCommandBuffer(renderer.command_buffer)
         if res != .SUCCESS {
             panic("failed to end command buffer")
         }
     }
 
     {     // submit commands
-        submit_info := vk.SubmitInfo {
+        submit_info := vulkan.SubmitInfo {
             sType                = .SUBMIT_INFO,
             commandBufferCount   = 1,
             pCommandBuffers      = &renderer.command_buffer,
             signalSemaphoreCount = 1,
             pSignalSemaphores    = &renderer.semaphores_draw_finished[swapchain_image_index],
         }
-        res := vk.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
+        res := vulkan.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
         if res != .SUCCESS {
             panic("failed to submit command")
         }
     }
 
     {     // present images
-        present_info := vk.PresentInfoKHR {
+        present_info := vulkan.PresentInfoKHR {
             sType              = .PRESENT_INFO_KHR,
             waitSemaphoreCount = 1,
             pWaitSemaphores    = &renderer.semaphores_draw_finished[swapchain_image_index],
@@ -617,7 +617,7 @@ draw_frame :: proc(renderer: ^Renderer) {
             pImageIndices      = &swapchain_image_index,
             pResults           = nil,
         }
-        res := vk.QueuePresentKHR(renderer.queue, &present_info)
+        res := vulkan.QueuePresentKHR(renderer.queue, &present_info)
         if res == .ERROR_OUT_OF_DATE_KHR || res == .SUBOPTIMAL_KHR {
             // fmt.println("swapchain out of date / suboptimal on queue present")
         } else if res != .SUCCESS {
@@ -627,15 +627,15 @@ draw_frame :: proc(renderer: ^Renderer) {
 }
 
 create_swapchain :: proc(renderer: ^Renderer) {
-    surface_capabilities: vk.SurfaceCapabilitiesKHR
-    surface_query_res := vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(
+    surface_capabilities: vulkan.SurfaceCapabilitiesKHR
+    surface_query_res := vulkan.GetPhysicalDeviceSurfaceCapabilitiesKHR(
         renderer.physical_device,
         gc.vk_surface,
         &surface_capabilities,
     )
 
     supported_present_mode_count: u32
-    get_supported_present_modes_res := vk.GetPhysicalDeviceSurfacePresentModesKHR(
+    get_supported_present_modes_res := vulkan.GetPhysicalDeviceSurfacePresentModesKHR(
         renderer.physical_device,
         gc.vk_surface,
         &supported_present_mode_count,
@@ -644,9 +644,9 @@ create_swapchain :: proc(renderer: ^Renderer) {
     if get_supported_present_modes_res != .SUCCESS {
         panic("failed to get count of supported present modes")
     }
-    supported_present_modes := make([]vk.PresentModeKHR, supported_present_mode_count)
+    supported_present_modes := make([]vulkan.PresentModeKHR, supported_present_mode_count)
     defer delete(supported_present_modes)
-    get_supported_present_modes_res2 := vk.GetPhysicalDeviceSurfacePresentModesKHR(
+    get_supported_present_modes_res2 := vulkan.GetPhysicalDeviceSurfacePresentModesKHR(
         renderer.physical_device,
         gc.vk_surface,
         &supported_present_mode_count,
@@ -662,10 +662,10 @@ create_swapchain :: proc(renderer: ^Renderer) {
             break
         }
     }
-    present_mode: vk.PresentModeKHR = .MAILBOX if mailbox_supported else .FIFO
+    present_mode: vulkan.PresentModeKHR = .MAILBOX if mailbox_supported else .FIFO
 
     supported_format_count: u32
-    get_supported_formats_res := vk.GetPhysicalDeviceSurfaceFormatsKHR(
+    get_supported_formats_res := vulkan.GetPhysicalDeviceSurfaceFormatsKHR(
         renderer.physical_device,
         gc.vk_surface,
         &supported_format_count,
@@ -674,9 +674,9 @@ create_swapchain :: proc(renderer: ^Renderer) {
     if get_supported_formats_res != .SUCCESS {
         panic("failed to get count of supported surface formats")
     }
-    supported_formats := make([]vk.SurfaceFormatKHR, supported_format_count)
+    supported_formats := make([]vulkan.SurfaceFormatKHR, supported_format_count)
     defer delete(supported_formats)
-    get_supported_formats_res2 := vk.GetPhysicalDeviceSurfaceFormatsKHR(
+    get_supported_formats_res2 := vulkan.GetPhysicalDeviceSurfaceFormatsKHR(
         renderer.physical_device,
         gc.vk_surface,
         &supported_format_count,
@@ -686,7 +686,7 @@ create_swapchain :: proc(renderer: ^Renderer) {
         panic("failed to get supported surface formats")
     }
 
-    desired_format := vk.SurfaceFormatKHR {
+    desired_format := vulkan.SurfaceFormatKHR {
         format     = .B8G8R8A8_SRGB,
         colorSpace = .SRGB_NONLINEAR,
     }
@@ -701,23 +701,23 @@ create_swapchain :: proc(renderer: ^Renderer) {
 
     renderer.surface_extent = surface_capabilities.currentExtent
 
-    create_info := vk.SwapchainCreateInfoKHR {
+    create_info := vulkan.SwapchainCreateInfoKHR {
         sType            = .SWAPCHAIN_CREATE_INFO_KHR,
-        flags            = vk.SwapchainCreateFlagsKHR{},
+        flags            = vulkan.SwapchainCreateFlagsKHR{},
         surface          = gc.vk_surface,
         minImageCount    = surface_capabilities.minImageCount,
         imageFormat      = surface_image_format.format,
         imageColorSpace  = surface_image_format.colorSpace,
         imageExtent      = renderer.surface_extent,
         imageArrayLayers = 1,
-        imageUsage       = vk.ImageUsageFlags{.COLOR_ATTACHMENT},
+        imageUsage       = vulkan.ImageUsageFlags{.COLOR_ATTACHMENT},
         imageSharingMode = .EXCLUSIVE,
         preTransform     = surface_capabilities.currentTransform,
-        compositeAlpha   = vk.CompositeAlphaFlagsKHR{.OPAQUE},
+        compositeAlpha   = vulkan.CompositeAlphaFlagsKHR{.OPAQUE},
         presentMode      = present_mode,
         clipped          = true,
     }
-    res := vk.CreateSwapchainKHR(renderer.device, &create_info, nil, &renderer.swapchain)
+    res := vulkan.CreateSwapchainKHR(renderer.device, &create_info, nil, &renderer.swapchain)
     if res != .SUCCESS {
         panic("failed to create swapchain")
     }; renderer.swapchain_image_format = surface_image_format.format
@@ -725,21 +725,21 @@ create_swapchain :: proc(renderer: ^Renderer) {
 
 create_swapchain_images :: proc(renderer: ^Renderer) {
     count: u32
-    res := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, nil)
+    res := vulkan.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, nil)
     if res != .SUCCESS {
         panic("failed to get swapchain images count")
     }
-    renderer.swapchain_images = make([]vk.Image, count)
-    res2 := vk.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, raw_data(renderer.swapchain_images))
+    renderer.swapchain_images = make([]vulkan.Image, count)
+    res2 := vulkan.GetSwapchainImagesKHR(renderer.device, renderer.swapchain, &count, raw_data(renderer.swapchain_images))
     if res2 != .SUCCESS {
         panic("failed to get swapchain images")
     }
 }
 
 create_swapchain_image_views :: proc(renderer: ^Renderer) {
-    renderer.swapchain_image_views = make([]vk.ImageView, cast(u32)len(renderer.swapchain_images))
+    renderer.swapchain_image_views = make([]vulkan.ImageView, cast(u32)len(renderer.swapchain_images))
     for i in 0 ..< len(renderer.swapchain_images) {
-        create_info := vk.ImageViewCreateInfo {
+        create_info := vulkan.ImageViewCreateInfo {
             sType = .IMAGE_VIEW_CREATE_INFO,
             flags = {},
             image = renderer.swapchain_images[i],
@@ -747,21 +747,21 @@ create_swapchain_image_views :: proc(renderer: ^Renderer) {
             format = renderer.swapchain_image_format,
             components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
             subresourceRange = {
-                aspectMask = vk.ImageAspectFlags{.COLOR},
+                aspectMask = vulkan.ImageAspectFlags{.COLOR},
                 baseMipLevel = 0,
                 levelCount = 1,
                 baseArrayLayer = 0,
                 layerCount = 1,
             },
         }
-        res := vk.CreateImageView(renderer.device, &create_info, nil, &renderer.swapchain_image_views[i])
+        res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.swapchain_image_views[i])
         if res != .SUCCESS {
             panic("failed to create swapchain image views")
         }
     }}
 
 create_graphics_pipeline :: proc(renderer: ^Renderer) {
-    vertex_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
+    vertex_shader_stage_create_info := vulkan.PipelineShaderStageCreateInfo {
         sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
         flags  = {},
         stage  = {.VERTEX},
@@ -769,7 +769,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pName  = "main",
     }
 
-    fragment_shader_stage_create_info := vk.PipelineShaderStageCreateInfo {
+    fragment_shader_stage_create_info := vulkan.PipelineShaderStageCreateInfo {
         sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
         flags  = {},
         stage  = {.FRAGMENT},
@@ -777,12 +777,12 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pName  = "main",
     }
 
-    pipeline_shader_stages := []vk.PipelineShaderStageCreateInfo {
+    pipeline_shader_stages := []vulkan.PipelineShaderStageCreateInfo {
         vertex_shader_stage_create_info,
         fragment_shader_stage_create_info,
     }
 
-    vertex_input_state_create_info := vk.PipelineVertexInputStateCreateInfo {
+    vertex_input_state_create_info := vulkan.PipelineVertexInputStateCreateInfo {
         sType                           = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         flags                           = {},
         vertexBindingDescriptionCount   = 1,
@@ -791,13 +791,13 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pVertexAttributeDescriptions    = raw_data(vertex_input_attribute_descriptions),
     }
 
-    input_assembly_state_create_info := vk.PipelineInputAssemblyStateCreateInfo {
+    input_assembly_state_create_info := vulkan.PipelineInputAssemblyStateCreateInfo {
         sType    = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         flags    = {},
         topology = .TRIANGLE_LIST,
     }
 
-    viewport := vk.Viewport {
+    viewport := vulkan.Viewport {
         x        = 0,
         y        = 0,
         width    = cast(f32)renderer.surface_extent.width,
@@ -805,11 +805,11 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         minDepth = 0,
         maxDepth = 1,
     }
-    scissor := vk.Rect2D {
+    scissor := vulkan.Rect2D {
         offset = {x = 0, y = 0},
         extent = renderer.surface_extent,
     }
-    viewport_state_create_info := vk.PipelineViewportStateCreateInfo {
+    viewport_state_create_info := vulkan.PipelineViewportStateCreateInfo {
         sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         viewportCount = 1,
         pViewports    = &viewport,
@@ -817,7 +817,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pScissors     = &scissor,
     }
 
-    rasterization_state_create_info := vk.PipelineRasterizationStateCreateInfo {
+    rasterization_state_create_info := vulkan.PipelineRasterizationStateCreateInfo {
         sType            = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         depthClampEnable = false,
         polygonMode      = .FILL,
@@ -826,14 +826,14 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         lineWidth        = 1,
     }
 
-    multisample_state_create_info := vk.PipelineMultisampleStateCreateInfo {
+    multisample_state_create_info := vulkan.PipelineMultisampleStateCreateInfo {
         sType                = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         sampleShadingEnable  = false,
-        rasterizationSamples = vk.SampleCountFlags{._1},
+        rasterizationSamples = vulkan.SampleCountFlags{._1},
     }
 
-    pipeline_layout: vk.PipelineLayout
-    pipeline_layout_create_info := vk.PipelineLayoutCreateInfo {
+    pipeline_layout: vulkan.PipelineLayout
+    pipeline_layout_create_info := vulkan.PipelineLayoutCreateInfo {
         sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
         flags                  = {},
         setLayoutCount         = 0,
@@ -841,7 +841,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pushConstantRangeCount = 0,
         pPushConstantRanges    = nil,
     }
-    pipeline_layout_create_res := vk.CreatePipelineLayout(
+    pipeline_layout_create_res := vulkan.CreatePipelineLayout(
         renderer.device,
         &pipeline_layout_create_info,
         nil,
@@ -851,26 +851,26 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         panic("failed to create pipeline layout")
     }
 
-    pipeline_rendering_create_info := vk.PipelineRenderingCreateInfo {
+    pipeline_rendering_create_info := vulkan.PipelineRenderingCreateInfo {
         sType                   = .PIPELINE_RENDERING_CREATE_INFO,
         viewMask                = 0,
         colorAttachmentCount    = 1,
         pColorAttachmentFormats = &renderer.swapchain_image_format,
     }
 
-    pipeline_color_blend_attachment_state := vk.PipelineColorBlendAttachmentState {
+    pipeline_color_blend_attachment_state := vulkan.PipelineColorBlendAttachmentState {
         blendEnable    = false,
         colorWriteMask = {.R, .G, .B, .A},
     }
 
-    color_blend_state_create_info := vk.PipelineColorBlendStateCreateInfo {
+    color_blend_state_create_info := vulkan.PipelineColorBlendStateCreateInfo {
         sType           = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         flags           = {},
         logicOpEnable   = false,
         attachmentCount = 1,
         pAttachments    = &pipeline_color_blend_attachment_state,
     }
-    create_info := vk.GraphicsPipelineCreateInfo {
+    create_info := vulkan.GraphicsPipelineCreateInfo {
         sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
         pNext               = &pipeline_rendering_create_info,
         flags               = {},
@@ -886,22 +886,22 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         renderPass          = {},
         subpass             = 0,
     }
-    res := vk.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
+    res := vulkan.CreateGraphicsPipelines(renderer.device, {}, 1, &create_info, nil, &renderer.graphics_pipeline)
 }
 
 handle_screen_resized :: proc(renderer: ^Renderer) {
-    wait_res := vk.DeviceWaitIdle(renderer.device)
+    wait_res := vulkan.DeviceWaitIdle(renderer.device)
     if wait_res != .SUCCESS {
         panic("failed wait for idle")
     }
 
     for i in 0 ..< len(renderer.swapchain_images) {
-        vk.DestroyImageView(renderer.device, renderer.swapchain_image_views[i], nil)
+        vulkan.DestroyImageView(renderer.device, renderer.swapchain_image_views[i], nil)
     }
     delete(renderer.swapchain_image_views)
     delete(renderer.swapchain_images)
-    vk.DestroySwapchainKHR(renderer.device, renderer.swapchain, nil)
-    vk.DestroyPipeline(renderer.device, renderer.graphics_pipeline, nil)
+    vulkan.DestroySwapchainKHR(renderer.device, renderer.swapchain, nil)
+    vulkan.DestroyPipeline(renderer.device, renderer.graphics_pipeline, nil)
 
     create_swapchain(renderer)
     create_swapchain_images(renderer)
