@@ -91,15 +91,14 @@ main :: proc() {
             ppEnabledLayerNames     = raw_data(ENABLED_LAYERS),
         }
         if res := vulkan.CreateInstance(&instance_create_info, nil, &gc.vk_instance); vk.not_success(res) {
-            fmt.eprintln(res)
-            panic("create instance failed")
+            vk.fatal("create instance failed", res)
         }
     }
 
     {     // create Vulkan WSI surface
         res := glfw.CreateWindowSurface(gc.vk_instance, gc.window, nil, &gc.vk_surface)
         if vk.not_success(res) {
-            panic("create vk khr window surface failed")
+            vk.fatal("create vk khr window surface failed", res)
         }
     }
 
