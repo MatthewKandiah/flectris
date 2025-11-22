@@ -5,10 +5,13 @@ import "core:fmt"
 import "core:os"
 import "vendor:glfw"
 import "vendor:vulkan"
+import "vendor:stb/image"
 import "vk"
+import "img"
 
 VERTEX_SHADER_PATH :: "vert.spv"
 FRAGMENT_SHADER_PATH :: "frag.spv"
+TEXTURE_PATH :: "main/smiley.png"
 
 Renderer :: struct {
     physical_device:             vulkan.PhysicalDevice,
@@ -149,6 +152,14 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
     }
 
+    { // create texture image resource
+	ok, x, y, channels_in_file, data := img.load(TEXTURE_PATH, 4)
+	if !ok {
+	    img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
+	}
+	// TODO convert data to slice []u8 or []Pixel {R, B, G, A: u8}
+    }
+    
     {     // create vertex buffer
         create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
