@@ -3,11 +3,11 @@ package main
 import "base:intrinsics"
 import "core:fmt"
 import "core:os"
-import "vendor:glfw"
-import "vendor:vulkan"
-import "vendor:stb/image"
-import "vk"
 import "img"
+import "vendor:glfw"
+import "vendor:stb/image"
+import "vendor:vulkan"
+import "vk"
 
 VERTEX_SHADER_PATH :: "vert.spv"
 FRAGMENT_SHADER_PATH :: "frag.spv"
@@ -152,14 +152,87 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
     }
 
-    { // create texture image resource
-	ok, x, y, channels_in_file, data := img.load(TEXTURE_PATH, 4)
-	if !ok {
-	    img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
+    {     // create texture image resource
+        ok, x, y, channels_in_file, data := img.load(TEXTURE_PATH, 4)
+        if !ok {
+            img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
+        }
+        defer img.free(data)
+
+        create_image_info := vulkan.ImageCreateInfo {
+            sType = .IMAGE_CREATE_INFO,
+            imageType = .D2,
+            format = .R32G32B32A32_UINT, // TODO consider changing to floats for easier maths?
+            extent = vulkan.Extent3D{width = cast(u32)x, height = cast(u32)y, depth = 1},
+            mipLevels = 1,
+            arrayLayers = 1,
+            tiling = .OPTIMAL,
+            sharingMode = .EXCLUSIVE,
+            initialLayout = .UNDEFINED,
+            samples = {._1},
+            usage = {.SAMPLED},
+        }
+        image: vulkan.Image // TODO - move to renderer
+        res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &image)
+        if vk.not_success(res) {
+            vk.fatal("failed to create texture image", res)
+        }
+
+        memory_requirements: vulkan.MemoryRequirements
+        vulkan.GetImageMemoryRequirements(renderer.device, image, &memory_requirements)
+
+        //TODO memory allocation and binding and mapping and copying data is copy-pasted at least 3 times, refactor
+        memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
+        desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
+        memory_type_index := -1
+        for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
+            physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
+            supports_desired_memory_properties := desired_memory_type_properties <= memory_type.propertyFlags
+            if supports_desired_memory_properties && physical_device_supports_resource_type {
+                memory_type_index = idx
+                break
+            }
+        }
+        if memory_type_index == -1 {
+            panic("failed to find a suitable memory type for vertex buffer allocation")
+        }
+
+        img_mem: vulkan.DeviceMemory
+        alloc_info := vulkan.MemoryAllocateInfo {
+            sType           = .MEMORY_ALLOCATE_INFO,
+            allocationSize  = memory_requirements.size,
+            memoryTypeIndex = cast(u32)memory_type_index,
+        }
+        allocate_res := vulkan.AllocateMemory(renderer.device, &alloc_info, nil, &img_mem)
+        if vk.not_success(allocate_res) {
+            vk.fatal("failed to allocate memory")
+        }
+
+        bind_res := vulkan.BindImageMemory(renderer.device, image, img_mem, 0)
+        if vk.not_success(res) {
+            vk.fatal("failed to bind image memory")
+        }
+
+        img_mem_mapped: rawptr
+        map_res := vulkan.MapMemory(
+            renderer.device,
+            img_mem,
+            0,
+            cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
+            {},
+            &img_mem_mapped,
+        )
+	if vk.not_success(map_res) {
+	    vk.fatal("failed to map image memory", res)
 	}
-	defer img.free(data)
+
+	intrinsics.mem_copy_non_overlapping(
+	    img_mem_mapped,
+	    raw_data(data),
+	    size_of(data[0]) * len(data) // TODO - verify we're getting the whole image copied, think we might just be getting a quarter of it (or we're allocating more memory than needed for the image)
+	)
     }
-    
+
     {     // create vertex buffer
         create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
