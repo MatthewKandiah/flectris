@@ -157,7 +157,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
 	if !ok {
 	    img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
 	}
-	// TODO convert data to slice []u8 or []Pixel {R, B, G, A: u8}
+	defer img.free(data)
     }
     
     {     // create vertex buffer
