@@ -37,6 +37,9 @@ Renderer :: struct {
     semaphores_draw_finished:    []vulkan.Semaphore,
     fence_image_acquired:        vulkan.Fence,
     fence_frame_finished:        vulkan.Fence,
+    texture_image:               vulkan.Image,
+    texture_image_memory:        vulkan.DeviceMemory,
+    texture_image_memory_mapped: rawptr,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -172,14 +175,13 @@ init_renderer :: proc() -> (renderer: Renderer) {
             samples = {._1},
             usage = {.SAMPLED},
         }
-        image: vulkan.Image // TODO - move to renderer
-        res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &image)
+        res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &renderer.texture_image)
         if vk.not_success(res) {
             vk.fatal("failed to create texture image", res)
         }
 
         memory_requirements: vulkan.MemoryRequirements
-        vulkan.GetImageMemoryRequirements(renderer.device, image, &memory_requirements)
+        vulkan.GetImageMemoryRequirements(renderer.device, renderer.texture_image, &memory_requirements)
 
         //TODO memory allocation and binding and mapping and copying data is copy-pasted at least 3 times, refactor
         memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
@@ -197,37 +199,35 @@ init_renderer :: proc() -> (renderer: Renderer) {
             panic("failed to find a suitable memory type for vertex buffer allocation")
         }
 
-        img_mem: vulkan.DeviceMemory
         alloc_info := vulkan.MemoryAllocateInfo {
             sType           = .MEMORY_ALLOCATE_INFO,
             allocationSize  = memory_requirements.size,
             memoryTypeIndex = cast(u32)memory_type_index,
         }
-        allocate_res := vulkan.AllocateMemory(renderer.device, &alloc_info, nil, &img_mem)
+        allocate_res := vulkan.AllocateMemory(renderer.device, &alloc_info, nil, &renderer.texture_image_memory)
         if vk.not_success(allocate_res) {
             vk.fatal("failed to allocate memory")
         }
 
-        bind_res := vulkan.BindImageMemory(renderer.device, image, img_mem, 0)
+        bind_res := vulkan.BindImageMemory(renderer.device, renderer.texture_image, renderer.texture_image_memory, 0)
         if vk.not_success(res) {
             vk.fatal("failed to bind image memory")
         }
 
-        img_mem_mapped: rawptr
         map_res := vulkan.MapMemory(
             renderer.device,
-            img_mem,
+            renderer.texture_image_memory,
             0,
             cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
             {},
-            &img_mem_mapped,
+            &renderer.texture_image_memory_mapped,
         )
 	if vk.not_success(map_res) {
 	    vk.fatal("failed to map image memory", res)
 	}
 
 	intrinsics.mem_copy_non_overlapping(
-	    img_mem_mapped,
+	    renderer.texture_image_memory_mapped,
 	    raw_data(data),
 	    size_of(data[0]) * len(data) // TODO - verify we're getting the whole image copied, think we might just be getting a quarter of it (or we're allocating more memory than needed for the image)
 	)
