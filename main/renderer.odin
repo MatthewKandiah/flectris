@@ -162,6 +162,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
         defer img.free(data)
 
+        // TODO - copy image data to staging buffer, then transfer that data to device local memory with optimal tiling
         create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
@@ -188,7 +189,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         if !ok {
             vk.fatal("failed to allocate and map texture image memory")
         }
-	
+
         intrinsics.mem_copy_non_overlapping(
             renderer.texture_image_memory_mapped,
             raw_data(data),
@@ -246,12 +247,16 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // allocate index buffer memory and map it
-        ok, index_buffer_memory, index_buffer_memory_mapped := vk.allocate_and_map_resource_memory(renderer.index_buffer, renderer.device, renderer.physical_device)
-	if !ok {
-	    vk.fatal("failed to allocate and map memory")
-	}
-	renderer.index_buffer_memory = index_buffer_memory
-	renderer.index_buffer_memory_mapped = index_buffer_memory_mapped
+        ok, index_buffer_memory, index_buffer_memory_mapped := vk.allocate_and_map_resource_memory(
+            renderer.index_buffer,
+            renderer.device,
+            renderer.physical_device,
+        )
+        if !ok {
+            vk.fatal("failed to allocate and map memory")
+        }
+        renderer.index_buffer_memory = index_buffer_memory
+        renderer.index_buffer_memory_mapped = index_buffer_memory_mapped
     }
 
     {     // copy index data into index buffer
@@ -445,23 +450,12 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
 
     {     // memory barrier transition to fragment shader output writable
-        memory_barrier_to_write := vulkan.ImageMemoryBarrier {
-            sType = .IMAGE_MEMORY_BARRIER,
-            srcAccessMask = {},
-            dstAccessMask = {.COLOR_ATTACHMENT_WRITE},
-            oldLayout = .UNDEFINED,
-            newLayout = .COLOR_ATTACHMENT_OPTIMAL,
-            srcQueueFamilyIndex = renderer.queue_family_index,
-            dstQueueFamilyIndex = renderer.queue_family_index,
-            image = renderer.swapchain_images[swapchain_image_index],
-            subresourceRange = vulkan.ImageSubresourceRange {
-                aspectMask = {.COLOR},
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1,
-            },
-        }
+        memory_barrier_to_write := vk.create_image_memory_barrier(
+            .UNDEFINED,
+            .COLOR_ATTACHMENT_OPTIMAL,
+            renderer.queue_family_index,
+            renderer.swapchain_images[swapchain_image_index],
+        )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
             srcStageMask = {.COLOR_ATTACHMENT_OUTPUT},
@@ -477,23 +471,12 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
 
     {     // memory barrier transition to presentable
-        memory_barrier_to_present := vulkan.ImageMemoryBarrier {
-            sType = .IMAGE_MEMORY_BARRIER,
-            srcAccessMask = {},
-            dstAccessMask = {},
-            oldLayout = .COLOR_ATTACHMENT_OPTIMAL,
-            newLayout = .PRESENT_SRC_KHR,
-            srcQueueFamilyIndex = renderer.queue_family_index,
-            dstQueueFamilyIndex = renderer.queue_family_index,
-            image = renderer.swapchain_images[swapchain_image_index],
-            subresourceRange = vulkan.ImageSubresourceRange {
-                aspectMask = {.COLOR},
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1,
-            },
-        }
+        memory_barrier_to_present := vk.create_image_memory_barrier(
+            .COLOR_ATTACHMENT_OPTIMAL,
+            .PRESENT_SRC_KHR,
+            renderer.queue_family_index,
+            renderer.swapchain_images[swapchain_image_index],
+        )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
             srcStageMask = {.BOTTOM_OF_PIPE},

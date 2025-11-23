@@ -95,3 +95,27 @@ bind_resource_memory :: proc(device: v.Device, resource: Resource, memory: v.Dev
     }
     unreachable()
 }
+
+create_image_memory_barrier :: proc(
+    old_layout, new_layout: v.ImageLayout,
+    queue_family_index: u32,
+    image: v.Image,
+) -> v.ImageMemoryBarrier {
+    return v.ImageMemoryBarrier {
+        sType = .IMAGE_MEMORY_BARRIER,
+        srcAccessMask = {},
+        dstAccessMask = {},
+        oldLayout = old_layout,
+        newLayout = new_layout,
+        srcQueueFamilyIndex = queue_family_index,
+        dstQueueFamilyIndex = queue_family_index,
+        image = image,
+        subresourceRange = v.ImageSubresourceRange {
+            aspectMask = {.COLOR},
+            baseMipLevel = 0,
+            levelCount = 1,
+            baseArrayLayer = 0,
+            layerCount = 1,
+        },
+    }
+}
