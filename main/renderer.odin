@@ -39,7 +39,6 @@ Renderer :: struct {
     fence_frame_finished:        vulkan.Fence,
     texture_image:               vulkan.Image,
     texture_image_memory:        vulkan.DeviceMemory,
-    texture_image_memory_mapped: rawptr,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -161,9 +160,50 @@ init_renderer :: proc() -> (renderer: Renderer) {
             img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
         }
         defer img.free(data)
+	data_size_bytes := cast(vulkan.DeviceSize)(size_of(data[0]) * len(data))
+	/* TODO
+x create staging buffer
+x map its memory
+x copy image data to it
+x create texture image (with memory allocated and bound)
+- begin recording commands to command buffer
+- transition image layout to transfer destination
+- do transfer command
+- transition image layout to sample read optimal
+- end recording commands to commmand buffer
+- submit command buffer to queue
+        */
+	staging_buffer: vulkan.Buffer
+	buffer_create_info := vulkan.BufferCreateInfo {
+            sType       = .BUFFER_CREATE_INFO,
+            flags       = {},
+            size        = data_size_bytes,
+            usage       = {.TRANSFER_SRC},
+            sharingMode = .EXCLUSIVE,
+        }
+        buffer_create_res := vulkan.CreateBuffer(renderer.device, &buffer_create_info, nil, &staging_buffer)
+        if vk.not_success(buffer_create_res) {
+            vk.fatal("failed to create texture image staging buffer", buffer_create_res)
+        }
 
-        // TODO - copy image data to staging buffer, then transfer that data to device local memory with optimal tiling
-        create_image_info := vulkan.ImageCreateInfo {
+	buffer_allocate_ok, memory, memory_mapped := vk.allocate_and_map_resource_memory(staging_buffer, renderer.device, renderer.physical_device, {.HOST_VISIBLE, .HOST_COHERENT})
+	if !buffer_allocate_ok {
+	    vk.fatal("failed to allocate texture image staging buffer memory")
+	}
+
+	defer {
+	    vulkan.DestroyBuffer(renderer.device, staging_buffer, nil)
+	    vulkan.UnmapMemory(renderer.device, memory)
+	    vulkan.FreeMemory(renderer.device, memory, nil)
+	}
+
+	intrinsics.mem_copy_non_overlapping(
+            memory_mapped,
+            raw_data(data),
+            data_size_bytes,
+        )
+	
+	create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
             format = .R8G8B8A8_UINT,
@@ -176,25 +216,20 @@ init_renderer :: proc() -> (renderer: Renderer) {
             samples = {._1},
             usage = {.SAMPLED},
         }
-        res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &renderer.texture_image)
-        if vk.not_success(res) {
-            vk.fatal("failed to create texture image", res)
+        image_create_res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &renderer.texture_image)
+        if vk.not_success(image_create_res) {
+            vk.fatal("failed to create texture image", image_create_res)
         }
 
-        ok, renderer.texture_image_memory, renderer.texture_image_memory_mapped = vk.allocate_and_map_resource_memory(
+        ok, renderer.texture_image_memory = vk.allocate_resource_memory(
             renderer.texture_image,
             renderer.device,
             renderer.physical_device,
+	    {.HOST_VISIBLE},
         )
         if !ok {
             vk.fatal("failed to allocate and map texture image memory")
         }
-
-        intrinsics.mem_copy_non_overlapping(
-            renderer.texture_image_memory_mapped,
-            raw_data(data),
-            size_of(data[0]) * len(data),
-        )
     }
 
     {     // create vertex buffer
@@ -216,6 +251,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             renderer.vertex_buffer,
             renderer.device,
             renderer.physical_device,
+	    {.HOST_VISIBLE, .HOST_COHERENT},
         )
         if !ok {
             vk.fatal("failed to allocate and map vertex buffer memory")
@@ -251,6 +287,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             renderer.index_buffer,
             renderer.device,
             renderer.physical_device,
+	    {.HOST_VISIBLE, .HOST_COHERENT},
         )
         if !ok {
             vk.fatal("failed to allocate and map memory")

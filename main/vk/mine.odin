@@ -32,18 +32,17 @@ Resource :: union {
     v.Buffer,
 }
 
-allocate_and_map_resource_memory :: proc(
+allocate_resource_memory :: proc(
     resource: Resource,
     device: v.Device,
     physical_device: v.PhysicalDevice,
+    desired_memory_type_properties: v.MemoryPropertyFlags,
 ) -> (
     ok: bool,
     memory: v.DeviceMemory,
-    memory_mapped: rawptr,
 ) {
     memory_requirements := get_resource_memory_requirements(device, resource)
     memory_properties := get_physical_device_memory_properties(physical_device)
-    desired_memory_type_properties := v.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
     found, memory_type_index := get_memory_type_index(
         memory_requirements,
         memory_properties,
@@ -66,6 +65,24 @@ allocate_and_map_resource_memory :: proc(
     bind_res := bind_resource_memory(device, resource, memory)
     if not_success(bind_res) {
         return
+    }
+
+    return true, memory
+}
+
+allocate_and_map_resource_memory :: proc(
+    resource: Resource,
+    device: v.Device,
+    physical_device: v.PhysicalDevice,
+    desired_memory_type_properties: v.MemoryPropertyFlags,
+) -> (
+    ok: bool,
+    memory: v.DeviceMemory,
+    memory_mapped: rawptr,
+) {
+    ok, memory = allocate_resource_memory(resource, device, physical_device, desired_memory_type_properties)
+    if !ok {
+	return
     }
 
     map_res := v.MapMemory(device, memory, 0, cast(v.DeviceSize)v.WHOLE_SIZE, {}, &memory_mapped)
