@@ -160,21 +160,10 @@ init_renderer :: proc() -> (renderer: Renderer) {
             img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
         }
         defer img.free(data)
-	data_size_bytes := cast(vulkan.DeviceSize)(size_of(data[0]) * len(data))
-	/* TODO
-x create staging buffer
-x map its memory
-x copy image data to it
-x create texture image (with memory allocated and bound)
-- begin recording commands to command buffer
-- transition image layout to transfer destination
-- do transfer command
-- transition image layout to sample read optimal
-- end recording commands to commmand buffer
-- submit command buffer to queue
-        */
-	staging_buffer: vulkan.Buffer
-	buffer_create_info := vulkan.BufferCreateInfo {
+        data_size_bytes := cast(vulkan.DeviceSize)(size_of(data[0]) * len(data))
+
+        staging_buffer: vulkan.Buffer
+        buffer_create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
             flags       = {},
             size        = data_size_bytes,
@@ -186,24 +175,25 @@ x create texture image (with memory allocated and bound)
             vk.fatal("failed to create texture image staging buffer", buffer_create_res)
         }
 
-	buffer_allocate_ok, memory, memory_mapped := vk.allocate_and_map_resource_memory(staging_buffer, renderer.device, renderer.physical_device, {.HOST_VISIBLE, .HOST_COHERENT})
-	if !buffer_allocate_ok {
-	    vk.fatal("failed to allocate texture image staging buffer memory")
-	}
-
-	defer {
-	    vulkan.DestroyBuffer(renderer.device, staging_buffer, nil)
-	    vulkan.UnmapMemory(renderer.device, memory)
-	    vulkan.FreeMemory(renderer.device, memory, nil)
-	}
-
-	intrinsics.mem_copy_non_overlapping(
-            memory_mapped,
-            raw_data(data),
-            data_size_bytes,
+        buffer_allocate_ok, memory, memory_mapped := vk.allocate_and_map_resource_memory(
+            staging_buffer,
+            renderer.device,
+            renderer.physical_device,
+            {.HOST_VISIBLE, .HOST_COHERENT},
         )
-	
-	create_image_info := vulkan.ImageCreateInfo {
+        if !buffer_allocate_ok {
+            vk.fatal("failed to allocate texture image staging buffer memory")
+        }
+
+        defer {
+            vulkan.DestroyBuffer(renderer.device, staging_buffer, nil)
+            vulkan.UnmapMemory(renderer.device, memory)
+            vulkan.FreeMemory(renderer.device, memory, nil)
+        }
+
+        intrinsics.mem_copy_non_overlapping(memory_mapped, raw_data(data), data_size_bytes)
+
+        create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
             format = .R8G8B8A8_UINT,
@@ -214,7 +204,7 @@ x create texture image (with memory allocated and bound)
             sharingMode = .EXCLUSIVE,
             initialLayout = .UNDEFINED,
             samples = {._1},
-            usage = {.SAMPLED},
+            usage = {.TRANSFER_DST, .SAMPLED},
         }
         image_create_res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &renderer.texture_image)
         if vk.not_success(image_create_res) {
@@ -225,11 +215,92 @@ x create texture image (with memory allocated and bound)
             renderer.texture_image,
             renderer.device,
             renderer.physical_device,
-	    {.HOST_VISIBLE},
+            {.DEVICE_LOCAL},
         )
         if !ok {
             vk.fatal("failed to allocate and map texture image memory")
         }
+
+        if !vk.begin_recording_one_time_submit_commands(renderer.command_buffer) {
+            vk.fatal("failed to begin recording texture image commands")
+        }
+
+        transfer_destination_barrier := vk.create_image_memory_barrier(
+            .UNDEFINED,
+            .TRANSFER_DST_OPTIMAL,
+            renderer.queue_family_index,
+            renderer.texture_image,
+        )
+        vulkan.CmdPipelineBarrier(
+            commandBuffer = renderer.command_buffer,
+            srcStageMask = {.TOP_OF_PIPE},
+            dstStageMask = {.TOP_OF_PIPE},
+            dependencyFlags = {},
+            imageMemoryBarrierCount = 1,
+            pImageMemoryBarriers = &transfer_destination_barrier,
+            memoryBarrierCount = 0,
+            pMemoryBarriers = nil,
+            bufferMemoryBarrierCount = 0,
+            pBufferMemoryBarriers = nil,
+        )
+
+        buffer_image_copy := vulkan.BufferImageCopy {
+            bufferOffset = 0,
+            bufferRowLength = 0,
+            bufferImageHeight = 0,
+            imageSubresource = {
+                aspectMask = vulkan.ImageAspectFlags{.COLOR},
+                mipLevel = 0,
+                baseArrayLayer = 0,
+                layerCount = 1,
+            },
+            imageExtent = vulkan.Extent3D{depth = 1, width = cast(u32)x, height = cast(u32)y},
+            imageOffset = vulkan.Offset3D{x = 0, y = 0, z = 0},
+        }
+        vulkan.CmdCopyBufferToImage(
+            renderer.command_buffer,
+            staging_buffer,
+            renderer.texture_image,
+            .TRANSFER_DST_OPTIMAL,
+            1,
+            &buffer_image_copy,
+        )
+
+        shader_read_only_barrier := vk.create_image_memory_barrier(
+            .TRANSFER_DST_OPTIMAL,
+            .SHADER_READ_ONLY_OPTIMAL,
+            renderer.queue_family_index,
+            renderer.texture_image,
+        )
+        vulkan.CmdPipelineBarrier(
+            commandBuffer = renderer.command_buffer,
+            srcStageMask = {.TOP_OF_PIPE},
+            dstStageMask = {.TOP_OF_PIPE},
+            dependencyFlags = {},
+            imageMemoryBarrierCount = 1,
+            pImageMemoryBarriers = &shader_read_only_barrier,
+            memoryBarrierCount = 0,
+            pMemoryBarriers = nil,
+            bufferMemoryBarrierCount = 0,
+            pBufferMemoryBarriers = nil,
+        )
+
+        if vulkan.EndCommandBuffer(renderer.command_buffer) != .SUCCESS {
+            vk.fatal("failed to end recording texture image commands")
+        }
+
+        submit_info := vulkan.SubmitInfo {
+            sType                = .SUBMIT_INFO,
+            commandBufferCount   = 1,
+            pCommandBuffers      = &renderer.command_buffer,
+            signalSemaphoreCount = 0,
+            pSignalSemaphores    = nil,
+        }
+        res := vulkan.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
+        if vk.not_success(res) {
+            vk.fatal("failed to submit command", res)
+        }
+        vulkan.DeviceWaitIdle(renderer.device)
     }
 
     {     // create vertex buffer
@@ -251,7 +322,7 @@ x create texture image (with memory allocated and bound)
             renderer.vertex_buffer,
             renderer.device,
             renderer.physical_device,
-	    {.HOST_VISIBLE, .HOST_COHERENT},
+            {.HOST_VISIBLE, .HOST_COHERENT},
         )
         if !ok {
             vk.fatal("failed to allocate and map vertex buffer memory")
@@ -287,7 +358,7 @@ x create texture image (with memory allocated and bound)
             renderer.index_buffer,
             renderer.device,
             renderer.physical_device,
-	    {.HOST_VISIBLE, .HOST_COHERENT},
+            {.HOST_VISIBLE, .HOST_COHERENT},
         )
         if !ok {
             vk.fatal("failed to allocate and map memory")
@@ -461,16 +532,10 @@ draw_frame :: proc(renderer: ^Renderer) {
         }
     }
 
-    {     // begin recording commands
-        begin_info := vulkan.CommandBufferBeginInfo {
-            sType = .COMMAND_BUFFER_BEGIN_INFO,
-            flags = {.ONE_TIME_SUBMIT},
-        }
-        res := vulkan.BeginCommandBuffer(renderer.command_buffer, &begin_info)
-        if vk.not_success(res) {
-            vk.fatal("failed to begin command buffer", res)
-        }
+    if !vk.begin_recording_one_time_submit_commands(renderer.command_buffer) {
+        vk.fatal("failed to  buffer")
     }
+
 
     clear_value := vulkan.ClearColorValue {
         float32 = [4]f32{1, 0, 1, 1},

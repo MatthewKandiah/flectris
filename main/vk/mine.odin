@@ -136,3 +136,12 @@ create_image_memory_barrier :: proc(
         },
     }
 }
+
+begin_recording_one_time_submit_commands :: proc(command_buffer: v.CommandBuffer) -> (ok: bool) {
+    begin_info := v.CommandBufferBeginInfo {
+	sType = .COMMAND_BUFFER_BEGIN_INFO,
+	flags = {.ONE_TIME_SUBMIT},
+    }
+    res := v.BeginCommandBuffer(command_buffer, &begin_info)
+    return res == .SUCCESS
+}
