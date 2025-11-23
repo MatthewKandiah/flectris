@@ -6,5 +6,4 @@ Tetris but you can pick your tileset.
 - enable blending (so we can have transparent bits on our sprites)
 
 ## Plan - Short Term
-- copy image data to staging buffer, then transfer to device local image
-- create image view, bind it to the graphics pipeline, check in renderdoc that we've got the whole image
+- create image view, create combined image sampler, bind it to the graphics pipeline, use it in our fragment shader
