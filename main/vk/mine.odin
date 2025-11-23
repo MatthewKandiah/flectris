@@ -21,8 +21,77 @@ get_memory_type_index :: proc(
         }
     }
     if tmp_index == -1 {
-	// desired properties not supported
-	return
+        // desired properties not supported
+        return
     }
     return true, cast(u32)tmp_index
+}
+
+Resource :: union {
+    v.Image,
+    v.Buffer,
+}
+
+allocate_and_map_resource_memory :: proc(
+    resource: Resource,
+    device: v.Device,
+    physical_device: v.PhysicalDevice,
+) -> (
+    ok: bool,
+    memory: v.DeviceMemory,
+    memory_mapped: rawptr,
+) {
+    memory_requirements := get_resource_memory_requirements(device, resource)
+    memory_properties := get_physical_device_memory_properties(physical_device)
+    desired_memory_type_properties := v.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
+    found, memory_type_index := get_memory_type_index(
+        memory_requirements,
+        memory_properties,
+        desired_memory_type_properties,
+    )
+    if !found {
+        return
+    }
+
+    alloc_info := v.MemoryAllocateInfo {
+        sType           = .MEMORY_ALLOCATE_INFO,
+        allocationSize  = memory_requirements.size,
+        memoryTypeIndex = cast(u32)memory_type_index,
+    }
+    allocate_res := v.AllocateMemory(device, &alloc_info, nil, &memory)
+    if not_success(allocate_res) {
+        return
+    }
+
+    bind_res := bind_resource_memory(device, resource, memory)
+    if not_success(bind_res) {
+        return
+    }
+
+    map_res := v.MapMemory(device, memory, 0, cast(v.DeviceSize)v.WHOLE_SIZE, {}, &memory_mapped)
+    if not_success(map_res) {
+        return
+    }
+
+    return true, memory, memory_mapped
+}
+
+get_resource_memory_requirements :: proc(device: v.Device, resource: Resource) -> (mem_req: v.MemoryRequirements) {
+    switch r in resource {
+    case v.Image:
+        return get_image_memory_requirements(device, r)
+    case v.Buffer:
+        return get_buffer_memory_requirements(device, r)
+    }
+    unreachable()
+}
+
+bind_resource_memory :: proc(device: v.Device, resource: Resource, memory: v.DeviceMemory) -> (res: v.Result) {
+    switch r in resource {
+    case v.Image:
+        return v.BindImageMemory(device, r, memory, 0)
+    case v.Buffer:
+        return v.BindBufferMemory(device, r, memory, 0)
+    }
+    unreachable()
 }

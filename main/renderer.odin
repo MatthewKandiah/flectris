@@ -179,49 +179,21 @@ init_renderer :: proc() -> (renderer: Renderer) {
         if vk.not_success(res) {
             vk.fatal("failed to create texture image", res)
         }
-	// start of get_memory_backed_resource()
-	
-        memory_requirements := vk.get_image_memory_requirements(renderer.device, renderer.texture_image)
-        memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
-        desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
-	found, memory_type_index := vk.get_memory_type_index(memory_requirements, memory_properties, desired_memory_type_properties)
-	if !found {
-	    vk.fatal("desired memory type index not found")
-	}
-        
-        alloc_info := vulkan.MemoryAllocateInfo {
-            sType           = .MEMORY_ALLOCATE_INFO,
-            allocationSize  = memory_requirements.size,
-            memoryTypeIndex = cast(u32)memory_type_index,
-        }
-        allocate_res := vulkan.AllocateMemory(renderer.device, &alloc_info, nil, &renderer.texture_image_memory)
-        if vk.not_success(allocate_res) {
-            vk.fatal("failed to allocate memory")
-        }
 
-        bind_res := vulkan.BindImageMemory(renderer.device, renderer.texture_image, renderer.texture_image_memory, 0)
-        if vk.not_success(res) {
-            vk.fatal("failed to bind image memory")
-        }
-
-        map_res := vulkan.MapMemory(
+        ok, renderer.texture_image_memory, renderer.texture_image_memory_mapped = vk.allocate_and_map_resource_memory(
+            renderer.texture_image,
             renderer.device,
-            renderer.texture_image_memory,
-            0,
-            cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
-            {},
-            &renderer.texture_image_memory_mapped,
+            renderer.physical_device,
         )
-	if vk.not_success(map_res) {
-	    vk.fatal("failed to map image memory", res)
-	}
-// end of get_memory_backed_resource
-
-	intrinsics.mem_copy_non_overlapping(
-	    renderer.texture_image_memory_mapped,
-	    raw_data(data),
-	    size_of(data[0]) * len(data) // TODO - verify we're getting the whole image copied, think we might just be getting a quarter of it (or we're allocating more memory than needed for the image)
-	)
+        if !ok {
+            vk.fatal("failed to allocate and map texture image memory")
+        }
+	
+        intrinsics.mem_copy_non_overlapping(
+            renderer.texture_image_memory_mapped,
+            raw_data(data),
+            size_of(data[0]) * len(data),
+        )
     }
 
     {     // create vertex buffer
@@ -238,40 +210,17 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
     }
 
-    {     // allocate vertex buffer memory and bind it
-        memory_requirements := vk.get_buffer_memory_requirements(renderer.device, renderer.vertex_buffer)
-        memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
-        desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
-        found, memory_type_index := vk.get_memory_type_index(memory_requirements, memory_properties, desired_memory_type_properties)
-        if !found {
-            vk.fatal("failed to find a suitable memory type for vertex buffer allocation")
-        }
-
-        allocate_info := vulkan.MemoryAllocateInfo {
-            sType           = .MEMORY_ALLOCATE_INFO,
-            allocationSize  = memory_requirements.size,
-            memoryTypeIndex = cast(u32)memory_type_index,
-        }
-        res := vulkan.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.vertex_buffer_memory)
-        if vk.not_success(res) {
-            vk.fatal("failed to allocate vertex buffer memory", res)
-        }
-
-        bind_res := vulkan.BindBufferMemory(renderer.device, renderer.vertex_buffer, renderer.vertex_buffer_memory, 0)
-        if vk.not_success(bind_res) {
-            vk.fatal("failed to bind vertex buffer memory", bind_res)
-        }
-    }
-
-    {     // map vertex buffer memory
-        res := vulkan.MapMemory(
+    {     // allocate and map buffer memory
+        ok, vertex_buffer_memory, vertex_buffer_memory_mapped := vk.allocate_and_map_resource_memory(
+            renderer.vertex_buffer,
             renderer.device,
-            renderer.vertex_buffer_memory,
-            0,
-            cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
-            {},
-            &renderer.vertex_buffer_memory_mapped,
+            renderer.physical_device,
         )
+        if !ok {
+            vk.fatal("failed to allocate and map vertex buffer memory")
+        }
+        renderer.vertex_buffer_memory = vertex_buffer_memory
+        renderer.vertex_buffer_memory_mapped = vertex_buffer_memory_mapped
     }
 
     {     // copy vertex data into vertex buffer
@@ -296,40 +245,13 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
     }
 
-    {     // allocate index buffer memory and bind it
-        memory_requirements := vk.get_buffer_memory_requirements(renderer.device, renderer.index_buffer)
-        memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
-        desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
-        found, memory_type_index := vk.get_memory_type_index(memory_requirements, memory_properties, desired_memory_type_properties)
-        if !found {
-            vk.fatal("failed to find a suitable memory type for index buffer allocation")
-        }
-
-        allocate_info := vulkan.MemoryAllocateInfo {
-            sType           = .MEMORY_ALLOCATE_INFO,
-            allocationSize  = memory_requirements.size,
-            memoryTypeIndex = cast(u32)memory_type_index,
-        }
-        res := vulkan.AllocateMemory(renderer.device, &allocate_info, nil, &renderer.index_buffer_memory)
-        if vk.not_success(res) {
-            vk.fatal("failed to allocate index buffer memory", res)
-        }
-
-        bind_res := vulkan.BindBufferMemory(renderer.device, renderer.index_buffer, renderer.index_buffer_memory, 0)
-        if vk.not_success(bind_res) {
-            vk.fatal("failed to bind index buffer memory", bind_res)
-        }
-    }
-
-    {     // map index buffer memory
-        res := vulkan.MapMemory(
-            renderer.device,
-            renderer.index_buffer_memory,
-            0,
-            cast(vulkan.DeviceSize)vulkan.WHOLE_SIZE,
-            {},
-            &renderer.index_buffer_memory_mapped,
-        )
+    {     // allocate index buffer memory and map it
+        ok, index_buffer_memory, index_buffer_memory_mapped := vk.allocate_and_map_resource_memory(renderer.index_buffer, renderer.device, renderer.physical_device)
+	if !ok {
+	    vk.fatal("failed to allocate and map memory")
+	}
+	renderer.index_buffer_memory = index_buffer_memory
+	renderer.index_buffer_memory_mapped = index_buffer_memory_mapped
     }
 
     {     // copy index data into index buffer
