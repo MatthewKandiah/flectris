@@ -165,7 +165,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
-            format = .R32G32B32A32_UINT, // TODO consider changing to floats for easier maths?
+            format = .R8G8B8A8_UINT, // TODO consider changing to floats for easier maths?
             extent = vulkan.Extent3D{width = cast(u32)x, height = cast(u32)y, depth = 1},
             mipLevels = 1,
             arrayLayers = 1,

@@ -10,4 +10,3 @@ Tetris but you can pick your tileset.
 - refactor resource memory allocation and binding and mapping and copying (done in buffer creation and image creation)
 - refactor image layout transitions (done in texture image creation and swapchain image setup)
 - create image view, bind it to the graphics pipeline, check in renderdoc that we've got the whole image
-- maybe embed the image data into the executable, instead of reading from file at runtime?
