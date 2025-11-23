@@ -44,6 +44,11 @@ get_buffer_memory_requirements :: proc(device: v.Device, buffer: v.Buffer) -> (m
     return
 }
 
+get_image_memory_requirements :: proc(device: v.Device, image: v.Image) -> (mem_req: v.MemoryRequirements) {
+    v.GetImageMemoryRequirements(device, image, &mem_req)
+    return
+}
+
 get_physical_device_memory_properties :: proc(
     physical_device: v.PhysicalDevice,
 ) -> (

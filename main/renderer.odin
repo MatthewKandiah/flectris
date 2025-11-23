@@ -165,7 +165,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
-            format = .R8G8B8A8_UINT, // TODO consider changing to floats for easier maths?
+            format = .R8G8B8A8_UINT,
             extent = vulkan.Extent3D{width = cast(u32)x, height = cast(u32)y, depth = 1},
             mipLevels = 1,
             arrayLayers = 1,
@@ -179,26 +179,16 @@ init_renderer :: proc() -> (renderer: Renderer) {
         if vk.not_success(res) {
             vk.fatal("failed to create texture image", res)
         }
-
-        memory_requirements: vulkan.MemoryRequirements
-        vulkan.GetImageMemoryRequirements(renderer.device, renderer.texture_image, &memory_requirements)
-
-        //TODO memory allocation and binding and mapping and copying data is copy-pasted at least 3 times, refactor
+	// start of get_memory_backed_resource()
+	
+        memory_requirements := vk.get_image_memory_requirements(renderer.device, renderer.texture_image)
         memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
         desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
-        memory_type_index := -1
-        for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
-            physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
-            supports_desired_memory_properties := desired_memory_type_properties <= memory_type.propertyFlags
-            if supports_desired_memory_properties && physical_device_supports_resource_type {
-                memory_type_index = idx
-                break
-            }
-        }
-        if memory_type_index == -1 {
-            panic("failed to find a suitable memory type for vertex buffer allocation")
-        }
-
+	found, memory_type_index := vk.get_memory_type_index(memory_requirements, memory_properties, desired_memory_type_properties)
+	if !found {
+	    vk.fatal("desired memory type index not found")
+	}
+        
         alloc_info := vulkan.MemoryAllocateInfo {
             sType           = .MEMORY_ALLOCATE_INFO,
             allocationSize  = memory_requirements.size,
@@ -225,6 +215,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
 	if vk.not_success(map_res) {
 	    vk.fatal("failed to map image memory", res)
 	}
+// end of get_memory_backed_resource
 
 	intrinsics.mem_copy_non_overlapping(
 	    renderer.texture_image_memory_mapped,
@@ -251,17 +242,9 @@ init_renderer :: proc() -> (renderer: Renderer) {
         memory_requirements := vk.get_buffer_memory_requirements(renderer.device, renderer.vertex_buffer)
         memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
         desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
-        memory_type_index := -1
-        for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
-            physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
-            supports_desired_memory_properties := desired_memory_type_properties <= memory_type.propertyFlags
-            if supports_desired_memory_properties && physical_device_supports_resource_type {
-                memory_type_index = idx
-                break
-            }
-        }
-        if memory_type_index == -1 {
-            panic("failed to find a suitable memory type for vertex buffer allocation")
+        found, memory_type_index := vk.get_memory_type_index(memory_requirements, memory_properties, desired_memory_type_properties)
+        if !found {
+            vk.fatal("failed to find a suitable memory type for vertex buffer allocation")
         }
 
         allocate_info := vulkan.MemoryAllocateInfo {
@@ -317,17 +300,9 @@ init_renderer :: proc() -> (renderer: Renderer) {
         memory_requirements := vk.get_buffer_memory_requirements(renderer.device, renderer.index_buffer)
         memory_properties := vk.get_physical_device_memory_properties(renderer.physical_device)
         desired_memory_type_properties := vulkan.MemoryPropertyFlags{.HOST_VISIBLE, .HOST_COHERENT}
-        memory_type_index := -1
-        for memory_type, idx in memory_properties.memoryTypes[0:memory_properties.memoryTypeCount] {
-            physical_device_supports_resource_type := memory_requirements.memoryTypeBits & (1 << cast(uint)idx) != 0
-            supports_desired_memory_properties := desired_memory_type_properties <= memory_type.propertyFlags
-            if supports_desired_memory_properties && physical_device_supports_resource_type {
-                memory_type_index = idx
-                break
-            }
-        }
-        if memory_type_index == -1 {
-            panic("failed to find a suitable memory type for index buffer allocation")
+        found, memory_type_index := vk.get_memory_type_index(memory_requirements, memory_properties, desired_memory_type_properties)
+        if !found {
+            vk.fatal("failed to find a suitable memory type for index buffer allocation")
         }
 
         allocate_info := vulkan.MemoryAllocateInfo {
