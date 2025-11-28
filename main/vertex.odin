@@ -4,8 +4,9 @@ import "core:math/linalg/glsl"
 import "vendor:vulkan"
 
 Vertex :: struct {
-    pos:    glsl.vec2,
-    colour: glsl.vec3,
+    pos:       glsl.vec2,
+    colour:    glsl.vec3,
+    tex_coord: glsl.vec2,
 }
 
 vertex_input_binding_description := vulkan.VertexInputBindingDescription {
@@ -27,4 +28,10 @@ vertex_input_attribute_descriptions := []vulkan.VertexInputAttributeDescription 
         format = .R32G32B32_SFLOAT,
         offset = cast(u32)offset_of(Vertex, colour),
     },
+    vulkan.VertexInputAttributeDescription {
+	location = 2,
+	binding = 0,
+	format = .R32G32_SFLOAT,
+	offset = cast(u32)offset_of(Vertex, tex_coord),
+    }
 }

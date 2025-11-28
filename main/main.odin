@@ -25,10 +25,10 @@ GlobalContext :: struct {
 gc: GlobalContext
 
 vertices :: []Vertex {
-    {{-0.5, -0.5}, {1, 0, 0}}, // top left
-    {{-0.5, 0.5}, {0, 1, 0}}, // bottom left
-    {{0.5, -0.5}, {0, 0, 1}}, // top right
-    {{0.5, 0.5}, {0.3, 0.3, 0.3}}, // bottom right
+    {{-0.5, -0.5}, {1, 0, 0}, {0, 0}}, // top left
+    {{-0.5, 0.5}, {0, 1, 0}, {0, 512}}, // bottom left
+    {{0.5, -0.5}, {0, 0, 1}, {512, 0}}, // top right
+    {{0.5, 0.5}, {0.3, 0.3, 0.3}, {512, 512}}, // bottom right
 }
 
 indices :: []u32 {
