@@ -6,4 +6,4 @@ Tetris but you can pick your tileset.
 - enable blending (so we can have transparent bits on our sprites)
 
 ## Plan - Short Term
-- create image view, create combined image sampler, bind it to the graphics pipeline, use it in our fragment shader
+- fix validation layer errors

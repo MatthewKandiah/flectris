@@ -41,6 +41,10 @@ Renderer :: struct {
     texture_image_memory:        vulkan.DeviceMemory,
     texture_image_view:          vulkan.ImageView,
     texture_sampler:             vulkan.Sampler,
+    descriptor_pool:             vulkan.DescriptorPool,
+    descriptor_set:              vulkan.DescriptorSet,
+    descriptor_set_layout:       vulkan.DescriptorSetLayout,
+    pipeline_layout:             vulkan.PipelineLayout,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -153,6 +157,25 @@ init_renderer :: proc() -> (renderer: Renderer) {
         res := vulkan.AllocateCommandBuffers(renderer.device, &allocate_info, &renderer.command_buffer)
         if vk.not_success(res) {
             vk.fatal("failed to allocate command buffer", res)
+        }
+    }
+
+    {     // create descriptor pool
+        descriptor_pool_size := vulkan.DescriptorPoolSize {
+            type            = .COMBINED_IMAGE_SAMPLER,
+            descriptorCount = 1,
+        }
+
+        create_info := vulkan.DescriptorPoolCreateInfo {
+            sType         = .DESCRIPTOR_POOL_CREATE_INFO,
+            flags         = {},
+            maxSets       = 1,
+            poolSizeCount = 1,
+            pPoolSizes    = &descriptor_pool_size,
+        }
+        res := vulkan.CreateDescriptorPool(renderer.device, &create_info, nil, &renderer.descriptor_pool)
+        if vk.not_success(res) {
+            vk.fatal("failed to create descriptor pool", res)
         }
     }
 
@@ -306,13 +329,13 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // create texture image view
-	create_info := vulkan.ImageViewCreateInfo{
-	    sType = .IMAGE_VIEW_CREATE_INFO,
-	    viewType = .D2,
-	    format = .R8G8B8A8_UINT,
-	    image = renderer.texture_image,
-	    flags = {},
-	    components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
+        create_info := vulkan.ImageViewCreateInfo {
+            sType = .IMAGE_VIEW_CREATE_INFO,
+            viewType = .D2,
+            format = .R8G8B8A8_UINT,
+            image = renderer.texture_image,
+            flags = {},
+            components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
             subresourceRange = {
                 aspectMask = vulkan.ImageAspectFlags{.COLOR},
                 baseMipLevel = 0,
@@ -320,11 +343,11 @@ init_renderer :: proc() -> (renderer: Renderer) {
                 baseArrayLayer = 0,
                 layerCount = 1,
             },
-	}
-	res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.texture_image_view)
-	if vk.not_success(res) {
-	    vk.fatal("failed to create texture image view", res)
-	}
+        }
+        res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.texture_image_view)
+        if vk.not_success(res) {
+            vk.fatal("failed to create texture image view", res)
+        }
     }
 
     {     // create sampler
@@ -455,6 +478,51 @@ init_renderer :: proc() -> (renderer: Renderer) {
         if vk.not_success(res) {
             vk.fatal("failed to create fragment shader module", res)
         }
+    }
+
+    {     // create descriptor set layout
+        texture_combined_sampler_binding := vulkan.DescriptorSetLayoutBinding {
+            binding            = 0,
+            descriptorType     = .COMBINED_IMAGE_SAMPLER,
+            descriptorCount    = 1,
+            stageFlags         = {.FRAGMENT},
+            pImmutableSamplers = nil,
+        }
+        create_info := vulkan.DescriptorSetLayoutCreateInfo {
+            sType        = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            flags        = {},
+            bindingCount = 1,
+            pBindings    = &texture_combined_sampler_binding,
+        }
+        res := vulkan.CreateDescriptorSetLayout(renderer.device, &create_info, nil, &renderer.descriptor_set_layout)
+    }
+
+    {     // allocate descriptor set
+        allocate_info := vulkan.DescriptorSetAllocateInfo {
+            sType              = .DESCRIPTOR_SET_ALLOCATE_INFO,
+            descriptorPool     = renderer.descriptor_pool,
+            descriptorSetCount = 1,
+            pSetLayouts        = &renderer.descriptor_set_layout,
+        }
+        res := vulkan.AllocateDescriptorSets(renderer.device, &allocate_info, &renderer.descriptor_set)
+    }
+
+    {     // update descriptor set
+	descriptor_image_info := vulkan.DescriptorImageInfo {
+	    sampler = renderer.texture_sampler,
+	    imageView = renderer.texture_image_view,
+	    imageLayout = .SHADER_READ_ONLY_OPTIMAL,
+	}
+        descriptor_write := vulkan.WriteDescriptorSet{
+	    sType = .WRITE_DESCRIPTOR_SET,
+	    dstSet = renderer.descriptor_set,
+	    dstBinding = 0,
+	    dstArrayElement = 0,
+	    descriptorCount = 1,
+	    descriptorType = .COMBINED_IMAGE_SAMPLER,
+	    pImageInfo = &descriptor_image_info,
+	}
+        vulkan.UpdateDescriptorSets(renderer.device, 1, &descriptor_write, 0, nil)
     }
 
     create_graphics_pipeline(&renderer)
@@ -671,6 +739,17 @@ draw_frame :: proc(renderer: ^Renderer) {
         buffer = renderer.index_buffer,
         offset = 0,
         indexType = .UINT32,
+    )
+
+    vulkan.CmdBindDescriptorSets(
+        commandBuffer = renderer.command_buffer,
+        pipelineBindPoint = .GRAPHICS,
+        layout = renderer.pipeline_layout,
+        firstSet = 0,
+        descriptorSetCount = 1,
+        pDescriptorSets = &renderer.descriptor_set,
+        dynamicOffsetCount = 0,
+        pDynamicOffsets = nil,
     )
 
     vulkan.CmdDrawIndexed(
@@ -896,12 +975,11 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         rasterizationSamples = vulkan.SampleCountFlags{._1},
     }
 
-    pipeline_layout: vulkan.PipelineLayout
     pipeline_layout_create_info := vulkan.PipelineLayoutCreateInfo {
         sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
         flags                  = {},
-        setLayoutCount         = 0,
-        pSetLayouts            = nil,
+        setLayoutCount         = 1,
+        pSetLayouts            = &renderer.descriptor_set_layout,
         pushConstantRangeCount = 0,
         pPushConstantRanges    = nil,
     }
@@ -909,12 +987,11 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         renderer.device,
         &pipeline_layout_create_info,
         nil,
-        &pipeline_layout,
+        &renderer.pipeline_layout,
     )
     if vk.not_success(pipeline_layout_create_res) {
         vk.fatal("failed to create pipeline layout", pipeline_layout_create_res)
     }
-
     pipeline_rendering_create_info := vulkan.PipelineRenderingCreateInfo {
         sType                   = .PIPELINE_RENDERING_CREATE_INFO,
         viewMask                = 0,
@@ -946,7 +1023,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pRasterizationState = &rasterization_state_create_info,
         pMultisampleState   = &multisample_state_create_info,
         pColorBlendState    = &color_blend_state_create_info,
-        layout              = pipeline_layout,
+        layout              = renderer.pipeline_layout,
         renderPass          = {},
         subpass             = 0,
     }
