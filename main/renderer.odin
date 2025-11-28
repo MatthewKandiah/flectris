@@ -221,7 +221,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
-            format = .R8G8B8A8_SNORM,
+            format = .R8G8B8A8_SRGB,
             extent = vulkan.Extent3D{width = cast(u32)x, height = cast(u32)y, depth = 1},
             mipLevels = 1,
             arrayLayers = 1,
@@ -332,7 +332,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_info := vulkan.ImageViewCreateInfo {
             sType = .IMAGE_VIEW_CREATE_INFO,
             viewType = .D2,
-            format = .R8G8B8A8_SNORM,
+            format = .R8G8B8A8_SRGB,
             image = renderer.texture_image,
             flags = {},
             components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
