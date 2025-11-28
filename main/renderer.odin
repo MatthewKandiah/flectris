@@ -39,6 +39,8 @@ Renderer :: struct {
     fence_frame_finished:        vulkan.Fence,
     texture_image:               vulkan.Image,
     texture_image_memory:        vulkan.DeviceMemory,
+    texture_image_view:          vulkan.ImageView,
+    texture_sampler:             vulkan.Sampler,
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -301,6 +303,52 @@ init_renderer :: proc() -> (renderer: Renderer) {
             vk.fatal("failed to submit command", res)
         }
         vulkan.DeviceWaitIdle(renderer.device)
+    }
+
+    {     // create texture image view
+	create_info := vulkan.ImageViewCreateInfo{
+	    sType = .IMAGE_VIEW_CREATE_INFO,
+	    viewType = .D2,
+	    format = .R8G8B8A8_UINT,
+	    image = renderer.texture_image,
+	    flags = {},
+	    components = {r = .IDENTITY, g = .IDENTITY, b = .IDENTITY, a = .IDENTITY},
+            subresourceRange = {
+                aspectMask = vulkan.ImageAspectFlags{.COLOR},
+                baseMipLevel = 0,
+                levelCount = 1,
+                baseArrayLayer = 0,
+                layerCount = 1,
+            },
+	}
+	res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.texture_image_view)
+	if vk.not_success(res) {
+	    vk.fatal("failed to create texture image view", res)
+	}
+    }
+
+    {     // create sampler
+        create_info := vulkan.SamplerCreateInfo {
+            sType                   = .SAMPLER_CREATE_INFO,
+            flags                   = {},
+            minFilter               = .NEAREST,
+            magFilter               = .NEAREST,
+            mipmapMode              = .NEAREST,
+            addressModeU            = .CLAMP_TO_EDGE,
+            addressModeV            = .CLAMP_TO_EDGE,
+            addressModeW            = .CLAMP_TO_EDGE,
+            mipLodBias              = 0,
+            anisotropyEnable        = false,
+            compareEnable           = false,
+            compareOp               = {},
+            minLod                  = 0,
+            maxLod                  = 0,
+            unnormalizedCoordinates = true,
+        }
+        res := vulkan.CreateSampler(renderer.device, &create_info, nil, &renderer.texture_sampler)
+        if vk.not_success(res) {
+            vk.fatal("failed to create texture sampler", res)
+        }
     }
 
     {     // create vertex buffer
