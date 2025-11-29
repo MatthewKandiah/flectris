@@ -999,9 +999,16 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pColorAttachmentFormats = &renderer.swapchain_image_format,
     }
 
+    // Note: alpha = 0 => fully transparent
     pipeline_color_blend_attachment_state := vulkan.PipelineColorBlendAttachmentState {
-        blendEnable    = false,
+        blendEnable    = true,
         colorWriteMask = {.R, .G, .B, .A},
+	colorBlendOp = .ADD,
+	alphaBlendOp = .MAX,
+	srcColorBlendFactor = .SRC_ALPHA,
+	dstColorBlendFactor = .ONE_MINUS_SRC_ALPHA,
+	srcAlphaBlendFactor = .ONE,
+	dstAlphaBlendFactor = .ONE,
     }
 
     color_blend_state_create_info := vulkan.PipelineColorBlendStateCreateInfo {
