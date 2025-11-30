@@ -3,19 +3,6 @@ package vk
 import "core:fmt"
 import v "vendor:vulkan"
 
-fatal :: proc(args: ..any) {
-    fmt.eprintln(..args)
-    panic("vk fatal")
-}
-
-is_success :: proc(res: v.Result) -> bool {
-    return res == .SUCCESS
-}
-
-not_success :: proc(res: v.Result) -> bool {
-    return res != .SUCCESS
-}
-
 enumerate_physical_devices :: proc(instance: v.Instance) -> (res: v.Result, count: u32, lst: []v.PhysicalDevice) {
     res = v.EnumeratePhysicalDevices(instance, &count, nil)
     if not_success(res) {
@@ -36,6 +23,16 @@ get_physical_device_queue_family_properties :: proc(
     v.GetPhysicalDeviceQueueFamilyProperties(physical_device, &count, nil)
     lst = make([]v.QueueFamilyProperties, count)
     v.GetPhysicalDeviceQueueFamilyProperties(physical_device, &count, raw_data(lst))
+    return
+}
+
+get_device_queue :: proc(device: v.Device, queue_family_index: u32, queue_index: u32) -> (queue: v.Queue) {
+    v.GetDeviceQueue(device, queue_family_index, queue_index, &queue)
+    return
+}
+
+get_physical_device_properties :: proc(physical_device: v.PhysicalDevice) -> (properties: v.PhysicalDeviceProperties) {
+    v.GetPhysicalDeviceProperties(physical_device, &properties)
     return
 }
 

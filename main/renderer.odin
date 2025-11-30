@@ -59,8 +59,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         defer delete(physical_devices)
 
         for device in physical_devices {
-            properties: vulkan.PhysicalDeviceProperties
-            vulkan.GetPhysicalDeviceProperties(device, &properties)
+            properties := vk.get_physical_device_properties(device)
 
             if properties.deviceType == .DISCRETE_GPU ||
                (renderer.physical_device == nil && properties.deviceType == .INTEGRATED_GPU) {
@@ -130,9 +129,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
     }
 
-    {     // retrieve queue handle
-        vulkan.GetDeviceQueue(renderer.device, renderer.queue_family_index, 0, &renderer.queue)
-    }
+    renderer.queue = vk.get_device_queue(renderer.device, renderer.queue_family_index, 0)
 
     create_swapchain(&renderer)
     create_swapchain_images(&renderer)
@@ -190,17 +187,17 @@ init_renderer :: proc() -> (renderer: Renderer) {
         defer img.free(data)
         data_size_bytes := cast(vulkan.DeviceSize)(size_of(data[0]) * len(data))
 
-	for b, idx in data {
-	    if idx % 4 != 3 {
-		continue
-	    }
-	    if b != 0 && b != 255 {
-		// TODO - reenable when we've got our actual textures we're interested in using, guessing the smiley just has some weird bits in it
-		//fmt.eprintln("ASSERT: only total opaque or total transparent values are currently supported, received alpha:", b)
-		//panic("Unexpected alpha value")
-	    }
-	}
-	
+        for b, idx in data {
+            if idx % 4 != 3 {
+                continue
+            }
+            if b != 0 && b != 255 {
+                // TODO - reenable when we've got our actual textures we're interested in using, guessing the smiley just has some weird bits in it
+                //fmt.eprintln("ASSERT: only total opaque or total transparent values are currently supported, received alpha:", b)
+                //panic("Unexpected alpha value")
+            }
+        }
+
         staging_buffer: vulkan.Buffer
         buffer_create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
@@ -269,7 +266,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             .TRANSFER_DST_OPTIMAL,
             renderer.queue_family_index,
             renderer.texture_image,
-		.COLOR,
+            .COLOR,
         )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
@@ -311,7 +308,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             .SHADER_READ_ONLY_OPTIMAL,
             renderer.queue_family_index,
             renderer.texture_image,
-		.COLOR,
+            .COLOR,
         )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
@@ -371,7 +368,11 @@ init_renderer :: proc() -> (renderer: Renderer) {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
             format = .D32_SFLOAT,
-            extent = vulkan.Extent3D{width = renderer.surface_extent.width, height = renderer.surface_extent.height, depth = 1},
+            extent = vulkan.Extent3D {
+                width = renderer.surface_extent.width,
+                height = renderer.surface_extent.height,
+                depth = 1,
+            },
             mipLevels = 1,
             arrayLayers = 1,
             tiling = .OPTIMAL,
@@ -394,7 +395,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         if !ok {
             vk.fatal("failed to allocate and map texture image memory")
         }
-	renderer.depth_image_memory = depth_image_memory
+        renderer.depth_image_memory = depth_image_memory
 
         if !vk.begin_recording_one_time_submit_commands(renderer.command_buffer) {
             vk.fatal("failed to begin recording depth image commands")
@@ -405,7 +406,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             .DEPTH_ATTACHMENT_OPTIMAL,
             renderer.queue_family_index,
             renderer.depth_image,
-	    .DEPTH
+            .DEPTH,
         )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
@@ -778,21 +779,21 @@ draw_frame :: proc(renderer: ^Renderer) {
     }
 
     depth_attachment := vulkan.RenderingAttachmentInfo {
-	sType = .RENDERING_ATTACHMENT_INFO,
-	imageView = renderer.depth_image_view,
-	imageLayout = .DEPTH_ATTACHMENT_OPTIMAL,
-	resolveMode = {},
-	loadOp = .CLEAR,
-	storeOp = .STORE, // TODO: can this be DONT_CARE?
+        sType       = .RENDERING_ATTACHMENT_INFO,
+        imageView   = renderer.depth_image_view,
+        imageLayout = .DEPTH_ATTACHMENT_OPTIMAL,
+        resolveMode = {},
+        loadOp      = .CLEAR,
+        storeOp     = .STORE, // TODO: can this be DONT_CARE?
     }
-    
+
     {     // memory barrier transition to fragment shader output writable
         memory_barrier_to_write := vk.create_image_memory_barrier(
             .UNDEFINED,
             .COLOR_ATTACHMENT_OPTIMAL,
             renderer.queue_family_index,
             renderer.swapchain_images[swapchain_image_index],
-		.COLOR,
+            .COLOR,
         )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
@@ -814,7 +815,7 @@ draw_frame :: proc(renderer: ^Renderer) {
             .PRESENT_SRC_KHR,
             renderer.queue_family_index,
             renderer.swapchain_images[swapchain_image_index],
-		.COLOR,
+            .COLOR,
         )
         vulkan.CmdPipelineBarrier(
             commandBuffer = renderer.command_buffer,
@@ -837,7 +838,7 @@ draw_frame :: proc(renderer: ^Renderer) {
         viewMask = 0,
         colorAttachmentCount = 1,
         pColorAttachments = &color_attachment,
-	pDepthAttachment = &depth_attachment,
+        pDepthAttachment = &depth_attachment,
     }
     vulkan.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
 
@@ -1119,7 +1120,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         viewMask                = 0,
         colorAttachmentCount    = 1,
         pColorAttachmentFormats = &renderer.swapchain_image_format,
-	depthAttachmentFormat   = .D32_SFLOAT,
+        depthAttachmentFormat   = .D32_SFLOAT,
     }
 
     // Note: alpha = 0 => fully transparent
@@ -1143,15 +1144,15 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
     }
 
     depth_stencil_state_create_info := vulkan.PipelineDepthStencilStateCreateInfo {
-	sType = .PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-	flags = {},
-	depthTestEnable = true,
-	depthWriteEnable = true,
-	depthCompareOp = .GREATER_OR_EQUAL,
-	depthBoundsTestEnable = false,
-	stencilTestEnable = false,
+        sType                 = .PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        flags                 = {},
+        depthTestEnable       = true,
+        depthWriteEnable      = true,
+        depthCompareOp        = .GREATER_OR_EQUAL,
+        depthBoundsTestEnable = false,
+        stencilTestEnable     = false,
     }
-    
+
     create_info := vulkan.GraphicsPipelineCreateInfo {
         sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
         pNext               = &pipeline_rendering_create_info,
@@ -1164,7 +1165,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pRasterizationState = &rasterization_state_create_info,
         pMultisampleState   = &multisample_state_create_info,
         pColorBlendState    = &color_blend_state_create_info,
-	pDepthStencilState  = &depth_stencil_state_create_info,
+        pDepthStencilState  = &depth_stencil_state_create_info,
         layout              = renderer.pipeline_layout,
         renderPass          = {},
         subpass             = 0,

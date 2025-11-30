@@ -1,6 +1,20 @@
 package vk
 
+import "core:fmt"
 import v "vendor:vulkan"
+
+fatal :: proc(args: ..any) {
+    fmt.eprintln(..args)
+    panic("vk fatal")
+}
+
+is_success :: proc(res: v.Result) -> bool {
+    return res == .SUCCESS
+}
+
+not_success :: proc(res: v.Result) -> bool {
+    return res != .SUCCESS
+}
 
 get_memory_type_index :: proc(
     memory_requirements: v.MemoryRequirements,
@@ -82,7 +96,7 @@ allocate_and_map_resource_memory :: proc(
 ) {
     ok, memory = allocate_resource_memory(resource, device, physical_device, desired_memory_type_properties)
     if !ok {
-	return
+        return
     }
 
     map_res := v.MapMemory(device, memory, 0, cast(v.DeviceSize)v.WHOLE_SIZE, {}, &memory_mapped)
@@ -140,8 +154,8 @@ create_image_memory_barrier :: proc(
 
 begin_recording_one_time_submit_commands :: proc(command_buffer: v.CommandBuffer) -> (ok: bool) {
     begin_info := v.CommandBufferBeginInfo {
-	sType = .COMMAND_BUFFER_BEGIN_INFO,
-	flags = {.ONE_TIME_SUBMIT},
+        sType = .COMMAND_BUFFER_BEGIN_INFO,
+        flags = {.ONE_TIME_SUBMIT},
     }
     res := v.BeginCommandBuffer(command_buffer, &begin_info)
     return res == .SUCCESS
