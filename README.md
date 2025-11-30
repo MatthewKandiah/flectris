@@ -2,7 +2,6 @@
 Tetris but you can pick your tileset.
 
 ## Plan
-- build script to build shaders as well
 - add z dimension to our vertices, overlap a second quad over the first
 - enable z-depth comparisons
 - refactor check - tidying vulkan calls, identify repeated blocks to pull out, etc
