@@ -363,103 +363,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
     }
 
-    {     // create depth image resource
-        create_image_info := vulkan.ImageCreateInfo {
-            sType = .IMAGE_CREATE_INFO,
-            imageType = .D2,
-            format = .D32_SFLOAT,
-            extent = vulkan.Extent3D {
-                width = renderer.surface_extent.width,
-                height = renderer.surface_extent.height,
-                depth = 1,
-            },
-            mipLevels = 1,
-            arrayLayers = 1,
-            tiling = .OPTIMAL,
-            sharingMode = .EXCLUSIVE,
-            initialLayout = .UNDEFINED,
-            samples = {._1},
-            usage = {.DEPTH_STENCIL_ATTACHMENT},
-        }
-        image_create_res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &renderer.depth_image)
-        if vk.not_success(image_create_res) {
-            vk.fatal("failed to create depth image", image_create_res)
-        }
-
-        ok, depth_image_memory := vk.allocate_resource_memory(
-            renderer.depth_image,
-            renderer.device,
-            renderer.physical_device,
-            {.DEVICE_LOCAL},
-        )
-        if !ok {
-            vk.fatal("failed to allocate and map texture image memory")
-        }
-        renderer.depth_image_memory = depth_image_memory
-
-        if !vk.begin_recording_one_time_submit_commands(renderer.command_buffer) {
-            vk.fatal("failed to begin recording depth image commands")
-        }
-
-        depth_optimal_barrier := vk.create_image_memory_barrier(
-            .UNDEFINED,
-            .DEPTH_ATTACHMENT_OPTIMAL,
-            renderer.queue_family_index,
-            renderer.depth_image,
-            .DEPTH,
-        )
-        vulkan.CmdPipelineBarrier(
-            commandBuffer = renderer.command_buffer,
-            srcStageMask = {.TOP_OF_PIPE},
-            dstStageMask = {.LATE_FRAGMENT_TESTS},
-            dependencyFlags = {},
-            imageMemoryBarrierCount = 1,
-            pImageMemoryBarriers = &depth_optimal_barrier,
-            memoryBarrierCount = 0,
-            pMemoryBarriers = nil,
-            bufferMemoryBarrierCount = 0,
-            pBufferMemoryBarriers = nil,
-        )
-
-        if vulkan.EndCommandBuffer(renderer.command_buffer) != .SUCCESS {
-            vk.fatal("failed to end recording texture image commands")
-        }
-
-        submit_info := vulkan.SubmitInfo {
-            sType                = .SUBMIT_INFO,
-            commandBufferCount   = 1,
-            pCommandBuffers      = &renderer.command_buffer,
-            signalSemaphoreCount = 0,
-            pSignalSemaphores    = nil,
-        }
-        res := vulkan.QueueSubmit(renderer.queue, 1, &submit_info, renderer.fence_frame_finished)
-        if vk.not_success(res) {
-            vk.fatal("failed to submit command", res)
-        }
-        vulkan.DeviceWaitIdle(renderer.device)
-    }
-
-    {     // create depth image view
-        create_info := vulkan.ImageViewCreateInfo {
-            sType = .IMAGE_VIEW_CREATE_INFO,
-            viewType = .D2,
-            format = .D32_SFLOAT,
-            image = renderer.depth_image,
-            flags = {},
-            components = {},
-            subresourceRange = {
-                aspectMask = vulkan.ImageAspectFlags{.DEPTH},
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1,
-            },
-        }
-        res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.depth_image_view)
-        if vk.not_success(res) {
-            vk.fatal("failed to create depth image view", res)
-        }
-    }
+    create_depth_image_and_view(&renderer)
 
     {     // create sampler
         create_info := vulkan.SamplerCreateInfo {
@@ -1186,11 +1090,115 @@ handle_screen_resized :: proc(renderer: ^Renderer) {
     delete(renderer.swapchain_images)
     vulkan.DestroySwapchainKHR(renderer.device, renderer.swapchain, nil)
     vulkan.DestroyPipeline(renderer.device, renderer.graphics_pipeline, nil)
+    vulkan.DestroyImageView(renderer.device, renderer.depth_image_view, nil)
+    vulkan.DestroyImage(renderer.device, renderer.depth_image, nil)
+    vulkan.FreeMemory(renderer.device, renderer.depth_image_memory, nil)
 
     create_swapchain(renderer)
     create_swapchain_images(renderer)
     create_swapchain_image_views(renderer)
     create_graphics_pipeline(renderer)
+    create_depth_image_and_view(renderer)
 
     gc.window_resized = false
+}
+
+create_depth_image_and_view :: proc(renderer: ^Renderer){
+    {// create depth image resource
+        create_image_info := vulkan.ImageCreateInfo {
+            sType = .IMAGE_CREATE_INFO,
+            imageType = .D2,
+            format = .D32_SFLOAT,
+            extent = vulkan.Extent3D {
+                width = renderer.surface_extent.width,
+                height = renderer.surface_extent.height,
+                depth = 1,
+            },
+            mipLevels = 1,
+            arrayLayers = 1,
+            tiling = .OPTIMAL,
+            sharingMode = .EXCLUSIVE,
+            initialLayout = .UNDEFINED,
+            samples = {._1},
+            usage = {.DEPTH_STENCIL_ATTACHMENT},
+        }
+        image_create_res := vulkan.CreateImage(renderer.device, &create_image_info, nil, &renderer.depth_image)
+        if vk.not_success(image_create_res) {
+            vk.fatal("failed to create depth image", image_create_res)
+        }
+
+        ok, depth_image_memory := vk.allocate_resource_memory(
+            renderer.depth_image,
+            renderer.device,
+            renderer.physical_device,
+            {.DEVICE_LOCAL},
+        )
+        if !ok {
+            vk.fatal("failed to allocate and map texture image memory")
+        }
+        renderer.depth_image_memory = depth_image_memory
+
+        if !vk.begin_recording_one_time_submit_commands(renderer.command_buffer) {
+            vk.fatal("failed to begin recording depth image commands")
+        }
+
+        depth_optimal_barrier := vk.create_image_memory_barrier(
+            .UNDEFINED,
+            .DEPTH_ATTACHMENT_OPTIMAL,
+            renderer.queue_family_index,
+            renderer.depth_image,
+            .DEPTH,
+        )
+        vulkan.CmdPipelineBarrier(
+            commandBuffer = renderer.command_buffer,
+            srcStageMask = {.TOP_OF_PIPE},
+            dstStageMask = {.LATE_FRAGMENT_TESTS},
+            dependencyFlags = {},
+            imageMemoryBarrierCount = 1,
+            pImageMemoryBarriers = &depth_optimal_barrier,
+            memoryBarrierCount = 0,
+            pMemoryBarriers = nil,
+            bufferMemoryBarrierCount = 0,
+            pBufferMemoryBarriers = nil,
+        )
+
+        if vulkan.EndCommandBuffer(renderer.command_buffer) != .SUCCESS {
+            vk.fatal("failed to end recording texture image commands")
+        }
+
+        submit_info := vulkan.SubmitInfo {
+            sType                = .SUBMIT_INFO,
+            commandBufferCount   = 1,
+            pCommandBuffers      = &renderer.command_buffer,
+            signalSemaphoreCount = 0,
+            pSignalSemaphores    = nil,
+        }
+        res := vulkan.QueueSubmit(renderer.queue, 1, &submit_info, {})
+        if vk.not_success(res) {
+            vk.fatal("failed to submit command", res)
+        }
+        vulkan.DeviceWaitIdle(renderer.device)
+    }
+
+    {     // create depth image view
+        create_info := vulkan.ImageViewCreateInfo {
+            sType = .IMAGE_VIEW_CREATE_INFO,
+            viewType = .D2,
+            format = .D32_SFLOAT,
+            image = renderer.depth_image,
+            flags = {},
+            components = {},
+            subresourceRange = {
+                aspectMask = vulkan.ImageAspectFlags{.DEPTH},
+                baseMipLevel = 0,
+                levelCount = 1,
+                baseArrayLayer = 0,
+                layerCount = 1,
+            },
+        }
+        res := vulkan.CreateImageView(renderer.device, &create_info, nil, &renderer.depth_image_view)
+        if vk.not_success(res) {
+            vk.fatal("failed to create depth image view", res)
+        }
+    }
 }
