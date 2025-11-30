@@ -766,6 +766,15 @@ draw_frame :: proc(renderer: ^Renderer) {
         clearValue = vulkan.ClearValue{color = clear_value},
     }
 
+    depth_attachment := vulkan.RenderingAttachmentInfo {
+	sType = .RENDERING_ATTACHMENT_INFO,
+	imageView = renderer.depth_image_view,
+	imageLayout = .DEPTH_ATTACHMENT_OPTIMAL,
+	resolveMode = {},
+	loadOp = .CLEAR,
+	storeOp = .STORE, // TODO: can this be DONT_CARE?
+    }
+    
     {     // memory barrier transition to fragment shader output writable
         memory_barrier_to_write := vk.create_image_memory_barrier(
             .UNDEFINED,
@@ -817,6 +826,7 @@ draw_frame :: proc(renderer: ^Renderer) {
         viewMask = 0,
         colorAttachmentCount = 1,
         pColorAttachments = &color_attachment,
+	pDepthAttachment = &depth_attachment,
     }
     vulkan.CmdBeginRendering(commandBuffer = renderer.command_buffer, pRenderingInfo = &rendering_info)
 
@@ -1098,6 +1108,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         viewMask                = 0,
         colorAttachmentCount    = 1,
         pColorAttachmentFormats = &renderer.swapchain_image_format,
+	depthAttachmentFormat   = .D32_SFLOAT,
     }
 
     // Note: alpha = 0 => fully transparent
@@ -1119,6 +1130,17 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         attachmentCount = 1,
         pAttachments    = &pipeline_color_blend_attachment_state,
     }
+
+    depth_stencil_state_create_info := vulkan.PipelineDepthStencilStateCreateInfo {
+	sType = .PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+	flags = {},
+	depthTestEnable = true,
+	depthWriteEnable = true,
+	depthCompareOp = .GREATER_OR_EQUAL,
+	depthBoundsTestEnable = false,
+	stencilTestEnable = false,
+    }
+    
     create_info := vulkan.GraphicsPipelineCreateInfo {
         sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
         pNext               = &pipeline_rendering_create_info,
@@ -1131,6 +1153,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         pRasterizationState = &rasterization_state_create_info,
         pMultisampleState   = &multisample_state_create_info,
         pColorBlendState    = &color_blend_state_create_info,
+	pDepthStencilState  = &depth_stencil_state_create_info,
         layout              = renderer.pipeline_layout,
         renderPass          = {},
         subpass             = 0,
