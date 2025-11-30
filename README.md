@@ -1,6 +1,12 @@
 # Flectris
 Tetris but you can pick your tileset.
 
+## Notes
+- found a possible solution for the depth buffer issue. If outputColour.a != 1 then `discard` [glsl docs (page 115/199)](https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.30.pdf)
+- discard effectively drops the current fragment, so no output colour gets written the the colour attachment, and no update gets written to the depth attachment
+- an early return might do the same? Or it might still update the depth buffer (because the z-coord is already known and set in a gl_blah variable)
+- need to experiment with more complex draws involving lots of overlapped quads to be sure this works for us
+
 ## Plan
 - add z dimension to our vertices, overlap a second quad over the first
 - enable z-depth comparisons
