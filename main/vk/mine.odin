@@ -117,6 +117,7 @@ create_image_memory_barrier :: proc(
     old_layout, new_layout: v.ImageLayout,
     queue_family_index: u32,
     image: v.Image,
+    aspect_flag: v.ImageAspectFlag,
 ) -> v.ImageMemoryBarrier {
     return v.ImageMemoryBarrier {
         sType = .IMAGE_MEMORY_BARRIER,
@@ -128,7 +129,7 @@ create_image_memory_barrier :: proc(
         dstQueueFamilyIndex = queue_family_index,
         image = image,
         subresourceRange = v.ImageSubresourceRange {
-            aspectMask = {.COLOR},
+            aspectMask = {aspect_flag},
             baseMipLevel = 0,
             levelCount = 1,
             baseArrayLayer = 0,
