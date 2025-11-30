@@ -190,6 +190,17 @@ init_renderer :: proc() -> (renderer: Renderer) {
         defer img.free(data)
         data_size_bytes := cast(vulkan.DeviceSize)(size_of(data[0]) * len(data))
 
+	for b, idx in data {
+	    if idx % 4 != 3 {
+		continue
+	    }
+	    if b != 0 && b != 255 {
+		// TODO - reenable when we've got our actual textures we're interested in using, guessing the smiley just has some weird bits in it
+		//fmt.eprintln("ASSERT: only total opaque or total transparent values are currently supported, received alpha:", b)
+		//panic("Unexpected alpha value")
+	    }
+	}
+	
         staging_buffer: vulkan.Buffer
         buffer_create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,

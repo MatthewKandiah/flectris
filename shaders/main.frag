@@ -11,9 +11,7 @@ const float inf = 1.0 / 0.0;
 
 void main() {
   outColour = textureLod(texSampler, texCoord, 0);
-
-  // TODO - wip hacky solution - manually tweak z buffer value if transparent, could support on/off transparency which is probably enough for what we are doing. Doesn't look right with the smiley texture we've been using so far. 
-  float binaryOutColourA = int( outColour.a != 0 );
-  gl_FragDepth = -inf * (1 - binaryOutColourA) + outColour.z * binaryOutColourA;
-  //outColour = vec4(fragColour, 1.0);
+  if (outColour.a < 1) {
+    discard;
+  }
 }
