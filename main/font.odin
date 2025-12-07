@@ -1,18 +1,5 @@
 package main
 
-Pos :: struct {
-    x, y: f32
-}
-
-Dim :: struct {
-    w, h: f32
-}
-
-TextureData :: struct {
-    base: Pos,
-    dim: Dim,
-}
-
 get_ascii_font_texture_data :: proc(char: u8) -> TextureData {
     if (char >= 'A' && char <= 'Z') {
 	// first row

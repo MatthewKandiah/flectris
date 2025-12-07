@@ -63,10 +63,16 @@ init_renderer :: proc() -> (renderer: Renderer) {
         z3 :: 0
         // A
 	td := get_ascii_font_texture_data('9')
-        VERTEX_BUFFER[0] = {{-0.5, -0.5, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y}}
-        VERTEX_BUFFER[1] = {{-0.5, 0.5, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y + td.dim.h}}
-        VERTEX_BUFFER[2] = {{0.5, -0.5, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y}}
-        VERTEX_BUFFER[3] = {{0.5, 0.5, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y + td.dim.h}}
+	drawable := Drawable{
+	    pos = {x = -0.5, y = -0.5},
+	    z = z1,
+	    dim = {w = 1, h = 1},
+	    texture_data = td,
+	}
+        VERTEX_BUFFER[0] = {{drawable.pos.x, drawable.pos.y, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y}}
+        VERTEX_BUFFER[1] = {{drawable.pos.x, drawable.pos.y + drawable.dim.h, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y + td.dim.h}}
+        VERTEX_BUFFER[2] = {{drawable.pos.x + drawable.dim.w, drawable.pos.y, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y}}
+        VERTEX_BUFFER[3] = {{drawable.pos.x + drawable.dim.w, drawable.pos.y + drawable.dim.h, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y + td.dim.h}}
 /*
 	// B
         VERTEX_BUFFER[4] = {{0, 0, z2}, {0, 0, 0, 0}, {8, 0}}
