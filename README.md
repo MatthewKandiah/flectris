@@ -6,6 +6,5 @@ Tetris but you can pick your tileset.
 - could we delete our blending setup and just disable it, since we're achieving window transparency by discarding fragments
 
 ## Short term plan
-- some way to draw without a texture, so just using a colour per vertex
 - wrap that into a nicer interface
 - think about how we want to lay things out on the screen

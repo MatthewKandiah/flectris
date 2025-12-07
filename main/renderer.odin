@@ -14,6 +14,11 @@ FRAGMENT_SHADER_PATH :: "frag.spv"
 SMILEY_TEXTURE_PATH :: "main/smiley.png"
 FONT_TEXTURE_PATH :: "main/font.png"
 
+VERTEX_BUFFER_SIZE :: 10_000
+VERTEX_BUFFER := [VERTEX_BUFFER_SIZE]Vertex{}
+INDEX_BUFFER_SIZE :: 10_000
+INDEX_BUFFER := [INDEX_BUFFER_SIZE]u32{}
+
 Renderer :: struct {
     physical_device:             vulkan.PhysicalDevice,
     queue_family_index:          u32,
@@ -52,6 +57,50 @@ Renderer :: struct {
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
+
+    {     // setup hardcoded data
+        z1 :: 0.7
+        z2 :: 0.1
+        z3 :: 0
+        // A
+        VERTEX_BUFFER[0] = {{-0.5, -0.5, z1}, {0, 0, 0, 0}, {0, 0}}
+        VERTEX_BUFFER[1] = {{-0.5, 0.5, z1}, {0, 0, 0, 0}, {0, 16}}
+        VERTEX_BUFFER[2] = {{0.5, -0.5, z1}, {0, 0, 0, 0}, {8, 0}}
+        VERTEX_BUFFER[3] = {{0.5, 0.5, z1}, {0, 0, 0, 0}, {8, 16}}
+        // B
+        VERTEX_BUFFER[4] = {{0, 0, z2}, {0, 0, 0, 0}, {8, 0}}
+        VERTEX_BUFFER[5] = {{0, 1, z2}, {0, 0, 0, 0}, {8, 16}}
+        VERTEX_BUFFER[6] = {{1, 0, z2}, {0, 0, 0, 0}, {16, 0}}
+        VERTEX_BUFFER[7] = {{1, 1, z2}, {0, 0, 0, 0}, {16, 16}}
+        // C -> RGBW
+        VERTEX_BUFFER[8] = {{-0.25, -0.25, z3}, {1, 0, 0, 1}, {16, 0}}
+        VERTEX_BUFFER[9] = {{-0.25, 0.75, z3}, {0, 1, 0, 1}, {16, 16}}
+        VERTEX_BUFFER[10] = {{0.75, -0.25, z3}, {0, 0, 1, 1}, {24, 0}}
+        VERTEX_BUFFER[11] = {{0.75, 0.75, z3}, {1, 1, 1, 1}, {24, 16}}
+
+        // quad 1
+        INDEX_BUFFER[0] = 0
+        INDEX_BUFFER[1] = 1
+        INDEX_BUFFER[2] = 2
+        INDEX_BUFFER[3] = 2
+        INDEX_BUFFER[4] = 1
+        INDEX_BUFFER[5] = 3
+        // quad 2
+        INDEX_BUFFER[6] = 4
+        INDEX_BUFFER[7] = 5
+        INDEX_BUFFER[8] = 6
+        INDEX_BUFFER[9] = 6
+        INDEX_BUFFER[10] = 5
+        INDEX_BUFFER[11] = 7
+        // quad 3
+        INDEX_BUFFER[12] = 8
+        INDEX_BUFFER[13] = 9
+        INDEX_BUFFER[14] = 10
+        INDEX_BUFFER[15] = 10
+        INDEX_BUFFER[16] = 9
+        INDEX_BUFFER[17] = 11
+    }
+
     {     // pick a physical device
         res, count, physical_devices := vk.enumerate_physical_devices(gc.vk_instance)
         if vk.not_success(res) {
@@ -394,7 +443,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
             flags       = {},
-            size        = cast(vulkan.DeviceSize)(size_of(Vertex) * len(vertices)),
+            size        = cast(vulkan.DeviceSize)(size_of(Vertex) * VERTEX_BUFFER_SIZE),
             usage       = {.VERTEX_BUFFER},
             sharingMode = .EXCLUSIVE,
         }
@@ -421,8 +470,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
     {     // copy vertex data into vertex buffer
         intrinsics.mem_copy_non_overlapping(
             renderer.vertex_buffer_memory_mapped,
-            raw_data(vertices),
-            size_of(Vertex) * len(vertices),
+            &VERTEX_BUFFER,
+            size_of(Vertex) * VERTEX_BUFFER_SIZE,
         )
     }
 
@@ -430,7 +479,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
             flags       = {},
-            size        = cast(vulkan.DeviceSize)(size_of(u32) * len(indices)),
+            size        = cast(vulkan.DeviceSize)(size_of(u32) * INDEX_BUFFER_SIZE),
             usage       = {.INDEX_BUFFER},
             sharingMode = .EXCLUSIVE,
         }
@@ -457,8 +506,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
     {     // copy index data into index buffer
         intrinsics.mem_copy_non_overlapping(
             renderer.index_buffer_memory_mapped,
-            raw_data(indices),
-            size_of(u32) * len(indices),
+            &INDEX_BUFFER,
+            size_of(u32) * INDEX_BUFFER_SIZE,
         )
     }
 
@@ -782,7 +831,7 @@ draw_frame :: proc(renderer: ^Renderer) {
 
     vulkan.CmdDrawIndexed(
         commandBuffer = renderer.command_buffer,
-        indexCount = cast(u32)len(indices),
+        indexCount = INDEX_BUFFER_SIZE,
         instanceCount = 1,
         firstIndex = 0,
         vertexOffset = 0,
@@ -1104,8 +1153,8 @@ handle_screen_resized :: proc(renderer: ^Renderer) {
     gc.window_resized = false
 }
 
-create_depth_image_and_view :: proc(renderer: ^Renderer){
-    {// create depth image resource
+create_depth_image_and_view :: proc(renderer: ^Renderer) {
+    {     // create depth image resource
         create_image_info := vulkan.ImageCreateInfo {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
