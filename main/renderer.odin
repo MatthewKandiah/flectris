@@ -19,7 +19,8 @@ VERTEX_BUFFER := [VERTEX_BUFFER_SIZE]Vertex{}
 INDEX_BUFFER_SIZE :: 10_000
 INDEX_BUFFER := [INDEX_BUFFER_SIZE]u32{}
 
-DRAWABLES_SIZE :: 20
+DRAWABLES_SIZE :: 10_000
+DRAWABLES_COUNT := 0
 DRAWABLES := [DRAWABLES_SIZE]Drawable{}
 
 Renderer :: struct {
@@ -60,7 +61,7 @@ Renderer :: struct {
 }
 
 draw_drawables :: proc() {
-    for drawable, idx in DRAWABLES {
+    for drawable, idx in DRAWABLES[:DRAWABLES_COUNT] {
         vertex_base_idx := idx * 4
         index_base_idx := idx * 6
         alpha: f32 = 1 if drawable.override_colour else 0
@@ -106,6 +107,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             override_colour = false,
             colour = RED,
         }
+	DRAWABLES_COUNT += 1
         DRAWABLES[1] = Drawable {
             pos = {x = 0.25, y = 0.7},
             z = 0.7,
@@ -114,6 +116,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             override_colour = true,
             colour = BLUE,
         }
+	DRAWABLES_COUNT += 1
     }
 
     {     // pick a physical device

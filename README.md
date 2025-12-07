@@ -6,7 +6,6 @@ Tetris but you can pick your tileset.
 - could we delete our blending setup and just disable it, since we're achieving window transparency by discarding fragments
 
 ## Short term plan
-- associate each letter in our font with a texture coordinate base + width + height
-- game state with list of "drawables"
-- function to populate vertex and index buffers from game state
+- game state with list of "entities" and a way to build drawables from entities
 - draw string function `draw_string("foobar", pos)`
+- draw animated sprite
