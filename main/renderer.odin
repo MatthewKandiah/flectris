@@ -19,6 +19,9 @@ VERTEX_BUFFER := [VERTEX_BUFFER_SIZE]Vertex{}
 INDEX_BUFFER_SIZE :: 10_000
 INDEX_BUFFER := [INDEX_BUFFER_SIZE]u32{}
 
+DRAWABLES_SIZE :: 20
+DRAWABLES := [DRAWABLES_SIZE]Drawable{}
+
 Renderer :: struct {
     physical_device:             vulkan.PhysicalDevice,
     queue_family_index:          u32,
@@ -56,58 +59,55 @@ Renderer :: struct {
     depth_image_view:            vulkan.ImageView,
 }
 
+draw_drawables :: proc() {
+    for drawable, idx in DRAWABLES {
+        VERTEX_BUFFER[idx * 4 + 0] = {
+            {drawable.pos.x, drawable.pos.y, drawable.z},
+            {0, 0, 0, 0},
+            {drawable.texture_data.base.x, drawable.texture_data.base.y},
+        }
+        VERTEX_BUFFER[idx * 4 + 1] = {
+            {drawable.pos.x, drawable.pos.y + drawable.dim.h, drawable.z},
+            {0, 0, 0, 0},
+            {drawable.texture_data.base.x, drawable.texture_data.base.y + drawable.texture_data.dim.h},
+        }
+        VERTEX_BUFFER[idx * 4 + 2] = {
+            {drawable.pos.x + drawable.dim.w, drawable.pos.y, drawable.z},
+            {0, 0, 0, 0},
+            {drawable.texture_data.base.x + drawable.texture_data.dim.w, drawable.texture_data.base.y},
+        }
+        VERTEX_BUFFER[idx * 4 + 3] = {
+            {drawable.pos.x + drawable.dim.w, drawable.pos.y + drawable.dim.h, drawable.z},
+            {0, 0, 0, 0},
+            {
+                drawable.texture_data.base.x + drawable.texture_data.dim.w,
+                drawable.texture_data.base.y + drawable.texture_data.dim.h,
+            },
+        }
+        INDEX_BUFFER[idx * 6 + 0] = cast(u32)(idx * 4 + 0)
+        INDEX_BUFFER[idx * 6 + 1] = cast(u32)(idx * 4 + 1)
+        INDEX_BUFFER[idx * 6 + 2] = cast(u32)(idx * 4 + 2)
+        INDEX_BUFFER[idx * 6 + 3] = cast(u32)(idx * 4 + 2)
+        INDEX_BUFFER[idx * 6 + 4] = cast(u32)(idx * 4 + 1)
+        INDEX_BUFFER[idx * 6 + 5] = cast(u32)(idx * 4 + 3)
+    }
+}
+
 init_renderer :: proc() -> (renderer: Renderer) {
     {     // setup hardcoded data
-        z1 :: 0.7
-        z2 :: 0.1
-        z3 :: 0
-        // A
-	td := get_ascii_font_texture_data('9')
-	drawable := Drawable{
-	    pos = {x = -0.5, y = -0.5},
-	    z = z1,
-	    dim = {w = 1, h = 1},
-	    texture_data = td,
+        DRAWABLES[0] = Drawable {
+            pos = {x = -0.5, y = -0.5},
+            z = 0.7,
+            dim = {w = 0.1, h = 0.1},
+            texture_data = get_ascii_font_texture_data('A'),
+        }
+	DRAWABLES[1] = Drawable {
+	    pos = {x = 0.25, y = 0.7},
+	    z = 0.7,
+	    dim = {w = 0.2, h = 0.2},
+	    texture_data = get_ascii_font_texture_data('B'),
 	}
-        VERTEX_BUFFER[0] = {{drawable.pos.x, drawable.pos.y, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y}}
-        VERTEX_BUFFER[1] = {{drawable.pos.x, drawable.pos.y + drawable.dim.h, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y + td.dim.h}}
-        VERTEX_BUFFER[2] = {{drawable.pos.x + drawable.dim.w, drawable.pos.y, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y}}
-        VERTEX_BUFFER[3] = {{drawable.pos.x + drawable.dim.w, drawable.pos.y + drawable.dim.h, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y + td.dim.h}}
-/*
-	// B
-        VERTEX_BUFFER[4] = {{0, 0, z2}, {0, 0, 0, 0}, {8, 0}}
-        VERTEX_BUFFER[5] = {{0, 1, z2}, {0, 0, 0, 0}, {8, 16}}
-        VERTEX_BUFFER[6] = {{1, 0, z2}, {0, 0, 0, 0}, {16, 0}}
-        VERTEX_BUFFER[7] = {{1, 1, z2}, {0, 0, 0, 0}, {16, 16}}
-        // C -> RGBW
-        VERTEX_BUFFER[8] = {{-0.25, -0.25, z3}, {1, 0, 0, 1}, {16, 0}}
-        VERTEX_BUFFER[9] = {{-0.25, 0.75, z3}, {0, 1, 0, 1}, {16, 16}}
-        VERTEX_BUFFER[10] = {{0.75, -0.25, z3}, {0, 0, 1, 1}, {24, 0}}
-        VERTEX_BUFFER[11] = {{0.75, 0.75, z3}, {1, 1, 1, 1}, {24, 16}}
-*/
-        // quad 1
-        INDEX_BUFFER[0] = 0
-        INDEX_BUFFER[1] = 1
-        INDEX_BUFFER[2] = 2
-        INDEX_BUFFER[3] = 2
-        INDEX_BUFFER[4] = 1
-        INDEX_BUFFER[5] = 3
-/*
-        // quad 2
-        INDEX_BUFFER[6] = 4
-        INDEX_BUFFER[7] = 5
-        INDEX_BUFFER[8] = 6
-        INDEX_BUFFER[9] = 6
-        INDEX_BUFFER[10] = 5
-        INDEX_BUFFER[11] = 7
-        // quad 3
-        INDEX_BUFFER[12] = 8
-        INDEX_BUFFER[13] = 9
-        INDEX_BUFFER[14] = 10
-        INDEX_BUFFER[15] = 10
-        INDEX_BUFFER[16] = 9
-        INDEX_BUFFER[17] = 11
-*/
+	draw_drawables()
     }
 
     {     // pick a physical device
