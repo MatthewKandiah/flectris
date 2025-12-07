@@ -57,17 +57,18 @@ Renderer :: struct {
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
-
     {     // setup hardcoded data
         z1 :: 0.7
         z2 :: 0.1
         z3 :: 0
         // A
-        VERTEX_BUFFER[0] = {{-0.5, -0.5, z1}, {0, 0, 0, 0}, {0, 0}}
-        VERTEX_BUFFER[1] = {{-0.5, 0.5, z1}, {0, 0, 0, 0}, {0, 16}}
-        VERTEX_BUFFER[2] = {{0.5, -0.5, z1}, {0, 0, 0, 0}, {8, 0}}
-        VERTEX_BUFFER[3] = {{0.5, 0.5, z1}, {0, 0, 0, 0}, {8, 16}}
-        // B
+	td := get_ascii_font_texture_data('9')
+        VERTEX_BUFFER[0] = {{-0.5, -0.5, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y}}
+        VERTEX_BUFFER[1] = {{-0.5, 0.5, z1}, {0, 0, 0, 0}, {td.base.x, td.base.y + td.dim.h}}
+        VERTEX_BUFFER[2] = {{0.5, -0.5, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y}}
+        VERTEX_BUFFER[3] = {{0.5, 0.5, z1}, {0, 0, 0, 0}, {td.base.x + td.dim.w, td.base.y + td.dim.h}}
+/*
+	// B
         VERTEX_BUFFER[4] = {{0, 0, z2}, {0, 0, 0, 0}, {8, 0}}
         VERTEX_BUFFER[5] = {{0, 1, z2}, {0, 0, 0, 0}, {8, 16}}
         VERTEX_BUFFER[6] = {{1, 0, z2}, {0, 0, 0, 0}, {16, 0}}
@@ -77,7 +78,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         VERTEX_BUFFER[9] = {{-0.25, 0.75, z3}, {0, 1, 0, 1}, {16, 16}}
         VERTEX_BUFFER[10] = {{0.75, -0.25, z3}, {0, 0, 1, 1}, {24, 0}}
         VERTEX_BUFFER[11] = {{0.75, 0.75, z3}, {1, 1, 1, 1}, {24, 16}}
-
+*/
         // quad 1
         INDEX_BUFFER[0] = 0
         INDEX_BUFFER[1] = 1
@@ -85,6 +86,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         INDEX_BUFFER[3] = 2
         INDEX_BUFFER[4] = 1
         INDEX_BUFFER[5] = 3
+/*
         // quad 2
         INDEX_BUFFER[6] = 4
         INDEX_BUFFER[7] = 5
@@ -99,6 +101,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
         INDEX_BUFFER[15] = 10
         INDEX_BUFFER[16] = 9
         INDEX_BUFFER[17] = 11
+*/
     }
 
     {     // pick a physical device
