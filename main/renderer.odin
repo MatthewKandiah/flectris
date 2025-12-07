@@ -61,35 +61,38 @@ Renderer :: struct {
 
 draw_drawables :: proc() {
     for drawable, idx in DRAWABLES {
-        VERTEX_BUFFER[idx * 4 + 0] = {
+        vertex_base_idx := idx * 4
+        index_base_idx := idx * 6
+        alpha: f32 = 1 if drawable.override_colour else 0
+        VERTEX_BUFFER[vertex_base_idx + 0] = {
             {drawable.pos.x, drawable.pos.y, drawable.z},
-            {0, 0, 0, 0},
+            {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x, drawable.texture_data.base.y},
         }
-        VERTEX_BUFFER[idx * 4 + 1] = {
+        VERTEX_BUFFER[vertex_base_idx + 1] = {
             {drawable.pos.x, drawable.pos.y + drawable.dim.h, drawable.z},
-            {0, 0, 0, 0},
+            {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x, drawable.texture_data.base.y + drawable.texture_data.dim.h},
         }
-        VERTEX_BUFFER[idx * 4 + 2] = {
+        VERTEX_BUFFER[vertex_base_idx + 2] = {
             {drawable.pos.x + drawable.dim.w, drawable.pos.y, drawable.z},
-            {0, 0, 0, 0},
+            {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x + drawable.texture_data.dim.w, drawable.texture_data.base.y},
         }
-        VERTEX_BUFFER[idx * 4 + 3] = {
+        VERTEX_BUFFER[vertex_base_idx + 3] = {
             {drawable.pos.x + drawable.dim.w, drawable.pos.y + drawable.dim.h, drawable.z},
-            {0, 0, 0, 0},
+            {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {
                 drawable.texture_data.base.x + drawable.texture_data.dim.w,
                 drawable.texture_data.base.y + drawable.texture_data.dim.h,
             },
         }
-        INDEX_BUFFER[idx * 6 + 0] = cast(u32)(idx * 4 + 0)
-        INDEX_BUFFER[idx * 6 + 1] = cast(u32)(idx * 4 + 1)
-        INDEX_BUFFER[idx * 6 + 2] = cast(u32)(idx * 4 + 2)
-        INDEX_BUFFER[idx * 6 + 3] = cast(u32)(idx * 4 + 2)
-        INDEX_BUFFER[idx * 6 + 4] = cast(u32)(idx * 4 + 1)
-        INDEX_BUFFER[idx * 6 + 5] = cast(u32)(idx * 4 + 3)
+        INDEX_BUFFER[index_base_idx + 0] = cast(u32)(vertex_base_idx + 0)
+        INDEX_BUFFER[index_base_idx + 1] = cast(u32)(vertex_base_idx + 1)
+        INDEX_BUFFER[index_base_idx + 2] = cast(u32)(vertex_base_idx + 2)
+        INDEX_BUFFER[index_base_idx + 3] = cast(u32)(vertex_base_idx + 2)
+        INDEX_BUFFER[index_base_idx + 4] = cast(u32)(vertex_base_idx + 1)
+        INDEX_BUFFER[index_base_idx + 5] = cast(u32)(vertex_base_idx + 3)
     }
 }
 
@@ -100,12 +103,16 @@ init_renderer :: proc() -> (renderer: Renderer) {
             z = 0.7,
             dim = {w = 0.1, h = 0.1},
             texture_data = get_ascii_font_texture_data('A'),
+            override_colour = false,
+            colour = RED,
         }
         DRAWABLES[1] = Drawable {
             pos = {x = 0.25, y = 0.7},
             z = 0.7,
             dim = {w = 0.2, h = 0.2},
             texture_data = get_ascii_font_texture_data('B'),
+            override_colour = true,
+            colour = BLUE,
         }
     }
 
