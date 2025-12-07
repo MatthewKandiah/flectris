@@ -101,13 +101,12 @@ init_renderer :: proc() -> (renderer: Renderer) {
             dim = {w = 0.1, h = 0.1},
             texture_data = get_ascii_font_texture_data('A'),
         }
-	DRAWABLES[1] = Drawable {
-	    pos = {x = 0.25, y = 0.7},
-	    z = 0.7,
-	    dim = {w = 0.2, h = 0.2},
-	    texture_data = get_ascii_font_texture_data('B'),
-	}
-	draw_drawables()
+        DRAWABLES[1] = Drawable {
+            pos = {x = 0.25, y = 0.7},
+            z = 0.7,
+            dim = {w = 0.2, h = 0.2},
+            texture_data = get_ascii_font_texture_data('B'),
+        }
     }
 
     {     // pick a physical device
@@ -476,14 +475,6 @@ init_renderer :: proc() -> (renderer: Renderer) {
         renderer.vertex_buffer_memory_mapped = vertex_buffer_memory_mapped
     }
 
-    {     // copy vertex data into vertex buffer
-        intrinsics.mem_copy_non_overlapping(
-            renderer.vertex_buffer_memory_mapped,
-            &VERTEX_BUFFER,
-            size_of(Vertex) * VERTEX_BUFFER_SIZE,
-        )
-    }
-
     {     // create index buffer
         create_info := vulkan.BufferCreateInfo {
             sType       = .BUFFER_CREATE_INFO,
@@ -510,14 +501,6 @@ init_renderer :: proc() -> (renderer: Renderer) {
         }
         renderer.index_buffer_memory = index_buffer_memory
         renderer.index_buffer_memory_mapped = index_buffer_memory_mapped
-    }
-
-    {     // copy index data into index buffer
-        intrinsics.mem_copy_non_overlapping(
-            renderer.index_buffer_memory_mapped,
-            &INDEX_BUFFER,
-            size_of(u32) * INDEX_BUFFER_SIZE,
-        )
     }
 
     {     // create vertex shader module
@@ -681,6 +664,23 @@ draw_frame :: proc(renderer: ^Renderer) {
     if gc.window_resized {
         handle_screen_resized(renderer)
         return
+    }
+
+    draw_drawables()
+    {     // copy vertex data into vertex buffer
+        intrinsics.mem_copy_non_overlapping(
+            renderer.vertex_buffer_memory_mapped,
+            &VERTEX_BUFFER,
+            size_of(Vertex) * VERTEX_BUFFER_SIZE,
+        )
+    }
+
+    {     // copy index data into index buffer
+        intrinsics.mem_copy_non_overlapping(
+            renderer.index_buffer_memory_mapped,
+            &INDEX_BUFFER,
+            size_of(u32) * INDEX_BUFFER_SIZE,
+        )
     }
 
     {     // ensure previous frame finished before we start
