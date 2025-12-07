@@ -11,7 +11,8 @@ import "vk"
 
 VERTEX_SHADER_PATH :: "vert.spv"
 FRAGMENT_SHADER_PATH :: "frag.spv"
-TEXTURE_PATH :: "main/smiley.png"
+SMILEY_TEXTURE_PATH :: "main/smiley.png"
+FONT_TEXTURE_PATH :: "main/font.png"
 
 Renderer :: struct {
     physical_device:             vulkan.PhysicalDevice,
@@ -180,9 +181,9 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // create texture image resource
-        ok, x, y, channels_in_file, data := img.load(TEXTURE_PATH, 4)
+        ok, x, y, channels_in_file, data := img.load(FONT_TEXTURE_PATH, 4)
         if !ok {
-            img.fatal("failed to load texture image from file", TEXTURE_PATH, x, y, channels_in_file)
+            img.fatal("failed to load texture image from file", FONT_TEXTURE_PATH, x, y, channels_in_file)
         }
         defer img.free(data)
         data_size_bytes := cast(vulkan.DeviceSize)(size_of(data[0]) * len(data))
