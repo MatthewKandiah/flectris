@@ -5,7 +5,7 @@ import "vendor:vulkan"
 
 Vertex :: struct {
     pos:       glsl.vec3,
-    colour:    glsl.vec3,
+    colour:    glsl.vec4,
     tex_coord: glsl.vec2,
 }
 
@@ -25,7 +25,7 @@ vertex_input_attribute_descriptions := []vulkan.VertexInputAttributeDescription 
     vulkan.VertexInputAttributeDescription {
         location = 1,
         binding = 0,
-        format = .R32G32B32_SFLOAT,
+        format = .R32G32B32A32_SFLOAT,
         offset = cast(u32)offset_of(Vertex, colour),
     },
     vulkan.VertexInputAttributeDescription {
