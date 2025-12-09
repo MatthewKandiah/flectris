@@ -650,7 +650,7 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
     vulkan.DestroyDevice(device, nil)
 }
 
-draw_frame :: proc(renderer: ^Renderer) {
+render_frame :: proc(renderer: ^Renderer) {
     if gc.window_resized {
         handle_screen_resized(renderer)
         return
@@ -730,7 +730,7 @@ draw_frame :: proc(renderer: ^Renderer) {
 
 
     clear_value := vulkan.ClearColorValue {
-        float32 = [4]f32{1, 0, 1, 1},
+        float32 = [4]f32{0, 0, 0, 1},
     }
 
     color_attachment := vulkan.RenderingAttachmentInfo {

@@ -38,6 +38,11 @@ WHITE :: Colour {
     g = 1,
     b = 1,
 }
+GREY :: Colour {
+    r = 0.3,
+    g = 0.3,
+    b = 0.3,
+}
 
 Pos :: struct {
     x, y: f32,
@@ -50,4 +55,38 @@ Dim :: struct {
 TextureData :: struct {
     base: Pos,
     dim:  Dim,
+}
+
+draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
+    drawables_added := 0
+    char_width: f32 = dim.w / cast(f32)len(str)
+    for c, idx in str {
+        if c == ' ' {
+            continue
+        }
+
+        DRAWABLES[DRAWABLES_COUNT + drawables_added] = Drawable {
+            pos = {x = pos.x + (cast(f32)idx * char_width), y = pos.y},
+            z = z,
+            dim = {w = char_width, h = dim.h},
+            texture_data = get_ascii_font_texture_data(c),
+            override_colour = false,
+            colour = BLACK,
+        }
+        drawables_added += 1
+    }
+
+    DRAWABLES_COUNT += drawables_added
+}
+
+draw_rect :: proc(colour: Colour, pos: Pos, dim: Dim, z: f32) {
+    DRAWABLES[DRAWABLES_COUNT] = Drawable {
+        pos = pos,
+        z = z,
+        dim = dim,
+        texture_data = {},
+        override_colour = true,
+        colour = colour,
+    }
+    DRAWABLES_COUNT += 1
 }

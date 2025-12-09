@@ -90,11 +90,12 @@ main :: proc() {
     for !glfw.WindowShouldClose(gc.window) {
         glfw.PollEvents()
 
-	str := "HELLO WORLD"
-	draw_string(transmute([]u8)str, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 1)
-	
+	draw_rect(GREY, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0)
+        str := "START"
+        draw_string(transmute([]u8)str, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0.5)
+
         // imagine a update game state
-        draw_frame(&renderer)
+        render_frame(&renderer)
     }
 }
 
@@ -110,26 +111,4 @@ window_size_callback :: proc "c" (window: glfw.WindowHandle, width: i32, height:
 
 get_proc_address :: proc(p: rawptr, name: cstring) {
     (cast(^rawptr)p)^ = glfw.GetInstanceProcAddress(gc.vk_instance, name)
-}
-
-draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
-    drawables_added := 0
-    char_width: f32 = dim.w / cast(f32)len(str)
-    for c, idx in str {
-        if c == ' ' {
-            continue
-        }
-
-	DRAWABLES[DRAWABLES_COUNT + drawables_added] = Drawable {
-            pos = {x = pos.x + (cast(f32)idx * char_width), y = pos.y},
-            z = z,
-            dim = {w = char_width, h = dim.h},
-            texture_data = get_ascii_font_texture_data(c),
-            override_colour = false,
-            colour = BLACK,
-        }
-	drawables_added += 1
-    }
-
-    DRAWABLES_COUNT += drawables_added
 }
