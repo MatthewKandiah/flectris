@@ -85,16 +85,12 @@ main :: proc() {
     }
 
     renderer := init_renderer()
-
+    game := init_game()
     // main loop
     for !glfw.WindowShouldClose(gc.window) {
         glfw.PollEvents()
-
-	draw_rect(GREY, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0)
-        str := "START"
-        draw_string(transmute([]u8)str, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0.5)
-
         // imagine a update game state
+        draw_game(game)
         render_frame(&renderer)
     }
 }

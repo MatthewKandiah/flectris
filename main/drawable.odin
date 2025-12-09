@@ -57,6 +57,25 @@ TextureData :: struct {
     dim:  Dim,
 }
 
+draw_game :: proc(game: Game) {
+    switch game.screen {
+    case .MAIN_MENU:
+        {
+            draw_menu()
+        }
+    case .GAME:
+        {
+            panic("Unimplemented")
+        }
+    }
+}
+
+draw_menu :: proc() {
+    draw_rect(GREY, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0)
+    str := "START"
+    draw_string(transmute([]u8)str, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0.5)
+}
+
 draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
     drawables_added := 0
     char_width: f32 = dim.w / cast(f32)len(str)
@@ -81,12 +100,12 @@ draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
 
 draw_rect :: proc(colour: Colour, pos: Pos, dim: Dim, z: f32) {
     DRAWABLES[DRAWABLES_COUNT] = Drawable {
-        pos = pos,
-        z = z,
-        dim = dim,
-        texture_data = {},
+        pos             = pos,
+        z               = z,
+        dim             = dim,
+        texture_data    = {},
         override_colour = true,
-        colour = colour,
+        colour          = colour,
     }
     DRAWABLES_COUNT += 1
 }
