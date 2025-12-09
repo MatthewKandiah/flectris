@@ -6,4 +6,4 @@ Tetris but you can pick your tileset.
 - could we delete our blending setup and just disable it, since we're achieving window transparency by discarding fragments
 
 ## Short term plan
-- game state and a draw function that populates drawables buffer for gamestate
+- should drawables be in units of actual pixels instead of [-1, +1] screen coordinates so we can draw actually square squares? Should we invert the y-axis so it's [0, 1] increasing from bottom to top to make it simpler to reason about as well?

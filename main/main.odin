@@ -9,6 +9,8 @@ import "vk"
 
 WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
+MIN_WINDOW_WIDTH :: 640
+MIN_WINDOW_HEIGHT :: 480
 APP_NAME :: "Flectris"
 ENABLED_LAYERS :: []cstring{"VK_LAYER_KHRONOS_validation"}
 REQUIRED_DEVICE_EXTENSIONS := []cstring {
@@ -42,6 +44,7 @@ main :: proc() {
         if gc.window == nil {
             panic("glfw.CreateWindow failed")
         }
+	glfw.SetWindowSizeLimits(gc.window, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, glfw.DONT_CARE, glfw.DONT_CARE)
     }
     defer {
         glfw.DestroyWindow(gc.window)
