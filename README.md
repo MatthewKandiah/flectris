@@ -6,6 +6,4 @@ Tetris but you can pick your tileset.
 - could we delete our blending setup and just disable it, since we're achieving window transparency by discarding fragments
 
 ## Short term plan
-- game state with list of "entities" and a way to build drawables from entities
-- draw string function `draw_string("foobar", pos)`
-- draw animated sprite
+- game state and a draw function that populates drawables buffer for gamestate

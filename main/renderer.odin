@@ -95,30 +95,10 @@ draw_drawables :: proc() {
         INDEX_BUFFER[index_base_idx + 4] = cast(u32)(vertex_base_idx + 1)
         INDEX_BUFFER[index_base_idx + 5] = cast(u32)(vertex_base_idx + 3)
     }
+    DRAWABLES_COUNT = 0
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
-    {     // setup hardcoded data
-        DRAWABLES[0] = Drawable {
-            pos = {x = -0.5, y = -0.5},
-            z = 0.7,
-            dim = {w = 0.1, h = 0.1},
-            texture_data = get_ascii_font_texture_data('A'),
-            override_colour = false,
-            colour = RED,
-        }
-	DRAWABLES_COUNT += 1
-        DRAWABLES[1] = Drawable {
-            pos = {x = 0.25, y = 0.7},
-            z = 0.7,
-            dim = {w = 0.2, h = 0.2},
-            texture_data = get_ascii_font_texture_data('B'),
-            override_colour = true,
-            colour = BLUE,
-        }
-	DRAWABLES_COUNT += 1
-    }
-
     {     // pick a physical device
         res, count, physical_devices := vk.enumerate_physical_devices(gc.vk_instance)
         if vk.not_success(res) {
@@ -685,12 +665,24 @@ draw_frame :: proc(renderer: ^Renderer) {
         )
     }
 
+    { // zero out vertex data
+	for &v in VERTEX_BUFFER {
+	    v = {}
+	}
+    }
+
     {     // copy index data into index buffer
         intrinsics.mem_copy_non_overlapping(
             renderer.index_buffer_memory_mapped,
             &INDEX_BUFFER,
             size_of(u32) * INDEX_BUFFER_SIZE,
         )
+    }
+
+    { // zero out index data
+	for &i in INDEX_BUFFER {
+	    i = 0
+	}
     }
 
     {     // ensure previous frame finished before we start

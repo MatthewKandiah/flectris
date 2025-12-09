@@ -1,7 +1,7 @@
 package main
 
 Drawable :: struct {
-    pos:             Pos, // is this going to be centre position, or corner position?
+    pos:             Pos,
     z:               f32,
     dim:             Dim,
     texture_data:    TextureData,
