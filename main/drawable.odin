@@ -1,5 +1,7 @@
 package main
 
+import "vendor:vulkan"
+
 Drawable :: struct {
     pos:             Pos,
     z:               f32,
@@ -52,6 +54,13 @@ Dim :: struct {
     w, h: f32,
 }
 
+extent_to_dim :: proc(extent: vulkan.Extent2D) -> Dim {
+    return Dim {
+	w = cast(f32)extent.width,
+	h  =cast(f32)extent.height,
+    }
+}
+
 TextureData :: struct {
     base: Pos,
     dim:  Dim,
@@ -71,9 +80,9 @@ draw_game :: proc(game: Game) {
 }
 
 draw_menu :: proc() {
-    draw_rect(GREY, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0)
+    draw_rect(GREY, {x = 0, y = 0}, {w = extent_to_dim(gc.surface_extent).w, h = extent_to_dim(gc.surface_extent).h}, 0)
     str := "START"
-    draw_string(transmute([]u8)str, {x = -0.5, y = 0}, {w = 1, h = 0.5}, 0.5)
+    draw_string(transmute([]u8)str, {x = 50, y = 100}, {w = 320, h = 50}, 0.5)
 }
 
 draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {

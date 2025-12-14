@@ -41,7 +41,6 @@ Renderer :: struct {
     fragment_shader_module:      vulkan.ShaderModule,
     vertex_shader_module:        vulkan.ShaderModule,
     graphics_pipeline:           vulkan.Pipeline,
-    surface_extent:              vulkan.Extent2D,
     command_pool:                vulkan.CommandPool,
     command_buffer:              vulkan.CommandBuffer,
     semaphores_draw_finished:    []vulkan.Semaphore,
@@ -60,34 +59,53 @@ Renderer :: struct {
     depth_image_view:            vulkan.ImageView,
 }
 
+drawable_dim_to_screen_dim :: proc(dim: Dim) -> Dim {
+    return Dim {
+	w = 2 * dim.w / cast(f32)gc.surface_extent.width,
+	h = 2 * dim.h / cast(f32)gc.surface_extent.height,
+    }
+}
+
+drawable_pos_to_screen_pos :: proc(pos: Pos) -> Pos {
+    return Pos {
+        x = (2 * pos.x) / cast(f32)gc.surface_extent.width - 1,
+        y = 1 - (2 * pos.y) / cast(f32)gc.surface_extent.height,
+    }
+}
+
 draw_drawables :: proc() {
     for drawable, idx in DRAWABLES[:DRAWABLES_COUNT] {
         vertex_base_idx := idx * 4
         index_base_idx := idx * 6
         alpha: f32 = 1 if drawable.override_colour else 0
+
+        pos := drawable_pos_to_screen_pos(drawable.pos)
+        dim := drawable_dim_to_screen_dim(drawable.dim)
+
         VERTEX_BUFFER[vertex_base_idx + 0] = {
-            {drawable.pos.x, drawable.pos.y, drawable.z},
+            {pos.x, pos.y, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x, drawable.texture_data.base.y},
         }
         VERTEX_BUFFER[vertex_base_idx + 1] = {
-            {drawable.pos.x, drawable.pos.y + drawable.dim.h, drawable.z},
+            {pos.x, pos.y - dim.h, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
-            {drawable.texture_data.base.x, drawable.texture_data.base.y + drawable.texture_data.dim.h},
+            {drawable.texture_data.base.x, drawable.texture_data.base.y - drawable.texture_data.dim.h},
         }
         VERTEX_BUFFER[vertex_base_idx + 2] = {
-            {drawable.pos.x + drawable.dim.w, drawable.pos.y, drawable.z},
+            {pos.x + dim.w, pos.y, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x + drawable.texture_data.dim.w, drawable.texture_data.base.y},
         }
         VERTEX_BUFFER[vertex_base_idx + 3] = {
-            {drawable.pos.x + drawable.dim.w, drawable.pos.y + drawable.dim.h, drawable.z},
+            {pos.x + dim.w, pos.y - dim.h, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {
                 drawable.texture_data.base.x + drawable.texture_data.dim.w,
-                drawable.texture_data.base.y + drawable.texture_data.dim.h,
+                drawable.texture_data.base.y - drawable.texture_data.dim.h,
             },
         }
+
         INDEX_BUFFER[index_base_idx + 0] = cast(u32)(vertex_base_idx + 0)
         INDEX_BUFFER[index_base_idx + 1] = cast(u32)(vertex_base_idx + 1)
         INDEX_BUFFER[index_base_idx + 2] = cast(u32)(vertex_base_idx + 2)
@@ -665,10 +683,10 @@ render_frame :: proc(renderer: ^Renderer) {
         )
     }
 
-    { // zero out vertex data
-	for &v in VERTEX_BUFFER {
-	    v = {}
-	}
+    {     // zero out vertex data
+        for &v in VERTEX_BUFFER {
+            v = {}
+        }
     }
 
     {     // copy index data into index buffer
@@ -679,10 +697,10 @@ render_frame :: proc(renderer: ^Renderer) {
         )
     }
 
-    { // zero out index data
-	for &i in INDEX_BUFFER {
-	    i = 0
-	}
+    {     // zero out index data
+        for &i in INDEX_BUFFER {
+            i = 0
+        }
     }
 
     {     // ensure previous frame finished before we start
@@ -798,7 +816,7 @@ render_frame :: proc(renderer: ^Renderer) {
 
     rendering_info := vulkan.RenderingInfo {
         sType = .RENDERING_INFO,
-        renderArea = vulkan.Rect2D{offset = vulkan.Offset2D{0, 0}, extent = renderer.surface_extent},
+        renderArea = vulkan.Rect2D{offset = vulkan.Offset2D{0, 0}, extent = gc.surface_extent},
         layerCount = 1,
         viewMask = 0,
         colorAttachmentCount = 1,
@@ -934,7 +952,7 @@ create_swapchain :: proc(renderer: ^Renderer) {
     }
     surface_image_format := desired_format if desired_format_supported else supported_formats[0]
 
-    renderer.surface_extent = surface_capabilities.currentExtent
+    gc.surface_extent = surface_capabilities.currentExtent
 
     create_info := vulkan.SwapchainCreateInfoKHR {
         sType            = .SWAPCHAIN_CREATE_INFO_KHR,
@@ -943,7 +961,7 @@ create_swapchain :: proc(renderer: ^Renderer) {
         minImageCount    = surface_capabilities.minImageCount,
         imageFormat      = surface_image_format.format,
         imageColorSpace  = surface_image_format.colorSpace,
-        imageExtent      = renderer.surface_extent,
+        imageExtent      = gc.surface_extent,
         imageArrayLayers = 1,
         imageUsage       = vulkan.ImageUsageFlags{.COLOR_ATTACHMENT},
         imageSharingMode = .EXCLUSIVE,
@@ -1031,14 +1049,14 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
     viewport := vulkan.Viewport {
         x        = 0,
         y        = 0,
-        width    = cast(f32)renderer.surface_extent.width,
-        height   = cast(f32)renderer.surface_extent.height,
+        width    = cast(f32)gc.surface_extent.width,
+        height   = cast(f32)gc.surface_extent.height,
         minDepth = 0,
         maxDepth = 1,
     }
     scissor := vulkan.Rect2D {
         offset = {x = 0, y = 0},
-        extent = renderer.surface_extent,
+        extent = gc.surface_extent,
     }
     viewport_state_create_info := vulkan.PipelineViewportStateCreateInfo {
         sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -1053,7 +1071,7 @@ create_graphics_pipeline :: proc(renderer: ^Renderer) {
         depthClampEnable = false,
         polygonMode      = .FILL,
         cullMode         = {.BACK},
-        frontFace        = .COUNTER_CLOCKWISE,
+        frontFace        = .CLOCKWISE,
         lineWidth        = 1,
     }
 
@@ -1171,8 +1189,8 @@ create_depth_image_and_view :: proc(renderer: ^Renderer) {
             imageType = .D2,
             format = .D32_SFLOAT,
             extent = vulkan.Extent3D {
-                width = renderer.surface_extent.width,
-                height = renderer.surface_extent.height,
+                width = gc.surface_extent.width,
+                height = gc.surface_extent.height,
                 depth = 1,
             },
             mipLevels = 1,

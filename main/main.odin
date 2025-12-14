@@ -23,6 +23,7 @@ GlobalContext :: struct {
     window_resized: bool,
     vk_surface:     vulkan.SurfaceKHR,
     vk_instance:    vulkan.Instance,
+    surface_extent: vulkan.Extent2D,
 }
 gc: GlobalContext
 
@@ -44,7 +45,7 @@ main :: proc() {
         if gc.window == nil {
             panic("glfw.CreateWindow failed")
         }
-	glfw.SetWindowSizeLimits(gc.window, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, glfw.DONT_CARE, glfw.DONT_CARE)
+        glfw.SetWindowSizeLimits(gc.window, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, glfw.DONT_CARE, glfw.DONT_CARE)
     }
     defer {
         glfw.DestroyWindow(gc.window)
