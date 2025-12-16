@@ -106,8 +106,8 @@ main :: proc() {
         // update game state for those interactions
 	// flush our event queue - populated by callbacks like glfwSetMouseButtonCallback, 
 	if EVENT_BUFFER_COUNT > 0 {
-	    for event, idx in EVENT_BUFFER[:EVENT_BUFFER_COUNT] {
-		fmt.println(idx, event)
+	    for event in EVENT_BUFFER[:EVENT_BUFFER_COUNT] {
+		game_handle_event(&game, event)
 	    }
 	    EVENT_BUFFER_COUNT = 0
 	}

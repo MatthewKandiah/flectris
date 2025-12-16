@@ -1,8 +1,8 @@
 package main
 
 import "core:fmt"
-import "vendor:vulkan"
 import "vendor:glfw"
+import "vendor:vulkan"
 
 Drawable :: struct {
     pos:             Pos,
@@ -69,16 +69,16 @@ draw_game :: proc(game: Game) {
     switch game.screen {
     case .MAIN_MENU:
         {
-            draw_menu()
+            draw_menu(game)
         }
     case .GAME:
         {
-            draw_game_screen()
+            draw_game_screen(game)
         }
     }
 }
 
-draw_menu :: proc() {
+draw_menu :: proc(game: Game) {
     draw_rect(
         GREY,
         {x = 0, y = 0},
@@ -102,30 +102,29 @@ draw_menu :: proc() {
         w = 100,
         h = 100,
     }
-    button_hovered := rect_hovered(button_pos, button_dim, gc.cursor_pos)
-    mouse_button := glfw.GetMouseButton(gc.window, glfw.MOUSE_BUTTON_LEFT)
-    if (mouse_button == glfw.PRESS && button_hovered) {
-	fmt.println("clicked")
-    }
+    button_hovered := game.state.(MainMenuState).start_button_hovered
     draw_rect(RED if button_hovered else BLUE, button_pos, button_dim, 0.1)
     draw_string(transmute([]u8)str, str_pos, str_dim, 0.5)
 }
 
-// TODO - refactor out `Rect` and move logic somewhere else
-rect_hovered :: proc(p: Pos, d: Dim, cursor_pos: Pos) -> bool {
-    if (cursor_pos.x > p.x + d.w || cursor_pos.x < p.x) {return false}
-    if (cursor_pos.y > p.y + d.h || cursor_pos.y < p.y) {return false}
-    return true
-}
-
-draw_game_screen :: proc() {
+draw_game_screen :: proc(game: Game) {
     draw_rect(
         GREY,
         {x = 0, y = 0},
         {w = extent_to_dim(gc.surface_extent).w, h = extent_to_dim(gc.surface_extent).h},
         0,
     )
-    str := "GAME"
+    str: string
+    switch game.state.(GameState).count {
+    case 1:
+        str = "1"
+    case 2:
+        str = "2"
+    case 3:
+        str = "3"
+    case:
+        str = "unexpected"
+    }
     draw_string(transmute([]u8)str, {x = 50, y = 100}, {w = 320, h = 50}, 0.5)
 }
 
