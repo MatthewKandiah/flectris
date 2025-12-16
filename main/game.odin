@@ -1,5 +1,6 @@
 package main
 
+// TODO-MATT: think we want to make this a tagged union and have separate state structs for main menu, game, etc.
 Game :: struct {
     screen: Screen,
 }
