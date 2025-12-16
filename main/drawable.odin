@@ -102,7 +102,10 @@ draw_menu :: proc(game: Game) {
         w = 100,
         h = 100,
     }
-    button_hovered := game.state.(MainMenuState).start_button_hovered
+    button_hovered := !(gc.cursor_pos.x < button_pos.x ||
+        gc.cursor_pos.x > button_pos.x + button_dim.w ||
+        gc.cursor_pos.y < button_pos.y ||
+        gc.cursor_pos.y > button_pos.y + button_dim.h)
     draw_rect(RED if button_hovered else BLUE, button_pos, button_dim, 0.1)
     draw_string(transmute([]u8)str, str_pos, str_dim, 0.5)
 }

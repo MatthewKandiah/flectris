@@ -9,12 +9,10 @@ Game :: struct {
 }
 
 MainMenuState :: struct {
-    start_button_hovered: bool,
     start_button_clicked: bool,
 }
 
 initial_main_menu_state :: MainMenuState {
-    start_button_hovered = false,
     start_button_clicked = false,
 }
 
