@@ -108,8 +108,8 @@ main :: proc() {
 	    }
 	    EVENT_BUFFER_COUNT = 0
 	}
-	
-        draw_game(game)
+	game_populate_entities(game)
+        draw_entities()
         render_frame(&renderer)
     }
 }

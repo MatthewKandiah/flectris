@@ -4,6 +4,10 @@ import "core:fmt"
 import "vendor:glfw"
 import "vendor:vulkan"
 
+BACKGROUND_Z :: 0
+UI_TEXT_BACKGROUND_Z :: 0.8
+UI_TEXT_Z :: 0.9
+
 Drawable :: struct {
     pos:             Pos,
     z:               f32,
@@ -65,70 +69,24 @@ TextureData :: struct {
     dim:  Dim,
 }
 
-draw_game :: proc(game: Game) {
-    switch game.screen {
-    case .MAIN_MENU:
-        {
-            draw_menu(game)
-        }
-    case .GAME:
-        {
-            draw_game_screen(game)
-        }
+draw_entities :: proc() {
+    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+        draw_entity(entity)
     }
 }
 
-draw_menu :: proc(game: Game) {
-    draw_rect(
-        GREY,
-        {x = 0, y = 0},
-        {w = extent_to_dim(gc.surface_extent).w, h = extent_to_dim(gc.surface_extent).h},
-        0,
-    )
-    str := "START"
-    button_pos := Pos {
-        x = 100,
-        y = 100,
+draw_entity :: proc(entity: Entity) {
+    switch entity.type {
+    case .Button:
+        draw_button(entity)
     }
-    str_pos := Pos {
-        x = 115,
-        y = 110,
-    }
-    button_dim := Dim {
-        w = 120,
-        h = 120,
-    }
-    str_dim := Dim {
-        w = 100,
-        h = 100,
-    }
-    button_hovered := !(gc.cursor_pos.x < button_pos.x ||
-        gc.cursor_pos.x > button_pos.x + button_dim.w ||
-        gc.cursor_pos.y < button_pos.y ||
-        gc.cursor_pos.y > button_pos.y + button_dim.h)
-    draw_rect(RED if button_hovered else BLUE, button_pos, button_dim, 0.1)
-    draw_string(transmute([]u8)str, str_pos, str_dim, 0.5)
 }
 
-draw_game_screen :: proc(game: Game) {
-    draw_rect(
-        GREY,
-        {x = 0, y = 0},
-        {w = extent_to_dim(gc.surface_extent).w, h = extent_to_dim(gc.surface_extent).h},
-        0,
-    )
-    str: string
-    switch game.state.(GameState).count {
-    case 1:
-        str = "1"
-    case 2:
-        str = "2"
-    case 3:
-        str = "3"
-    case:
-        str = "unexpected"
-    }
-    draw_string(transmute([]u8)str, {x = 50, y = 100}, {w = 320, h = 50}, 0.5)
+draw_button :: proc(entity: Entity) {
+    data := entity.data.(ButtonEntityData)
+    colour := RED if data.hovered else BLUE
+    draw_rect(colour, entity.pos, entity.dim, UI_TEXT_BACKGROUND_Z)
+    draw_string(data.str, entity.pos, entity.dim, UI_TEXT_Z)
 }
 
 draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {

@@ -1,5 +1,7 @@
 package main
 
+import "core:fmt"
+
 Game :: struct {
     screen: Screen,
     state:  union {
@@ -8,12 +10,13 @@ Game :: struct {
     },
 }
 
-MainMenuState :: struct {
-    start_button_clicked: bool,
-}
+MainMenuState :: struct {}
 
-initial_main_menu_state :: MainMenuState {
-    start_button_clicked = false,
+initial_main_menu_state :: MainMenuState{}
+
+generate_main_menu_entities :: proc() {
+    ENTITY_COUNT = 0
+
 }
 
 GameState :: struct {
@@ -28,20 +31,58 @@ init_game :: proc() -> Game {
     return Game{screen = .MAIN_MENU, state = initial_main_menu_state}
 }
 
-overlaps_start_button :: proc(pos: Pos) -> bool {
-    button_pos := Pos {
-        x = 100,
-        y = 100,
+game_populate_entities :: proc(game: Game) {
+    ENTITY_COUNT = 0
+    switch game.screen {
+    case .GAME:
+        return
+    case .MAIN_MENU:
+        {
+            start_str := "START"
+            surface_dim := extent_to_dim(gc.surface_extent)
+            start_button_dim := Dim {
+                w = 200,
+                h = 100,
+            }
+            start_button_pos := Pos {
+                x = surface_dim.w / 2 - start_button_dim.w / 2,
+                y = surface_dim.h / 2 - start_button_dim.h / 2,
+            }
+            exit_str := "EXIT"
+            exit_button_dim := Dim {
+                w = 200,
+                h = 100,
+            }
+            exit_button_pos := Pos {
+                x = start_button_pos.x,
+                y = start_button_pos.y - 1.5 * start_button_dim.h,
+            }
+            entity_push(
+                button_entity(
+                    start_button_pos,
+                    start_button_dim,
+                    transmute([]u8)start_str,
+                    is_hovered(start_button_pos, start_button_dim),
+                ),
+            )
+            entity_push(
+                button_entity(
+                    exit_button_pos,
+                    exit_button_dim,
+                    transmute([]u8)exit_str,
+                    is_hovered(exit_button_pos, exit_button_dim),
+                ),
+            )
+        }
     }
-    button_dim := Dim {
-        w = 120,
-        h = 120,
-    }
+}
+
+is_hovered :: proc(button_pos: Pos, button_dim: Dim) -> bool {
     return(
-        !(pos.x < button_pos.x ||
-            pos.x > button_pos.x + button_dim.w ||
-            pos.y < button_pos.y ||
-            pos.y > button_pos.y + button_dim.h) \
+        !(gc.cursor_pos.x < button_pos.x ||
+            gc.cursor_pos.x > button_pos.x + button_dim.w ||
+            gc.cursor_pos.y < button_pos.y ||
+            gc.cursor_pos.y > button_pos.y + button_dim.h) \
     )
 }
 
@@ -57,12 +98,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
             case .Mouse:
                 {
                     mouse_event := event.data.(MouseEvent)
-                    if (mouse_event.button == .Left &&
-                           mouse_event.type == .Press &&
-                        overlaps_start_button(mouse_event.pos)) {
-			game.screen = .GAME
-			game.state = initial_game_state
-		    }
+                    // TODO - handle clicks on any clickable entities
                 }
             }
         }
