@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "vendor:glfw"
 
 Game :: struct {
     screen: Screen,
@@ -35,7 +36,36 @@ game_populate_entities :: proc(game: Game) {
     ENTITY_COUNT = 0
     switch game.screen {
     case .GAME:
-        return
+        {
+            game_state := game.state.(GameState)
+            game_str: string
+            if game_state.count == 3 {
+                game_str = "3"
+            } else if game_state.count == 2 {
+                game_str = "2"
+            } else if game_state.count == 1 {
+                game_str = "1"
+            } else {
+                game_str = "Whoops"
+            }
+            button_dim := Dim {
+                w = 400,
+                h = 400,
+            }
+            button_pos := Pos {
+                x = button_dim.w / 2 - button_dim.w / 2,
+                y = button_dim.h / 2 - button_dim.h / 2,
+            }
+	    entity_push(
+                button_entity(
+                    button_pos,
+                    button_dim,
+                    transmute([]u8)game_str,
+                    is_hovered(button_pos, button_dim),
+                    decrement_count_on_click,
+                ),
+            )
+        }
     case .MAIN_MENU:
         {
             start_str := "START"
@@ -96,7 +126,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                         if !entity.clickable {continue}
                         if !is_hovered(entity.pos, entity.dim) {continue}
                         if entity.on_click == nil {unreachable()}
-                        entity.on_click()
+                        entity.on_click(game)
                     }
                 }
             }
@@ -117,7 +147,14 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                 }
             case .Mouse:
                 {
-                    return
+                    mouse_event := event.data.(MouseEvent)
+		    if mouse_event.type != .Press {return}
+		    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+			if !entity.clickable {continue}
+			if !is_hovered(entity.pos, entity.dim) {continue}
+			if entity.on_click == nil {unreachable()}
+			entity.on_click(game)
+		    }
                 }
             }
         }
@@ -129,10 +166,16 @@ Screen :: enum {
     GAME,
 }
 
-start_game_on_click :: proc() {
-    fmt.println("start")
+start_game_on_click :: proc(game: ^Game) {
+    game.screen = .GAME
+    game.state = initial_game_state
 }
 
-exit_on_click :: proc() {
-    fmt.println("exit")
+exit_on_click :: proc(_: ^Game) {
+    glfw.SetWindowShouldClose(gc.window, true)
+}
+
+decrement_count_on_click :: proc(game: ^Game) {
+    blah := &game.state.(GameState)
+    blah.count -= 1
 }
