@@ -63,7 +63,7 @@ game_populate_entities :: proc(game: Game) {
                     start_button_dim,
                     transmute([]u8)start_str,
                     is_hovered(start_button_pos, start_button_dim),
-		    start_game_on_click,
+                    start_game_on_click,
                 ),
             )
             entity_push(
@@ -72,7 +72,7 @@ game_populate_entities :: proc(game: Game) {
                     exit_button_dim,
                     transmute([]u8)exit_str,
                     is_hovered(exit_button_pos, exit_button_dim),
-		    exit_on_click,
+                    exit_on_click,
                 ),
             )
         }
@@ -91,13 +91,13 @@ game_handle_event :: proc(game: ^Game, event: Event) {
             case .Mouse:
                 {
                     mouse_event := event.data.(MouseEvent)
-		    if mouse_event.type != .Press {return}
-		    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-			if !entity.clickable {continue}
-			if !is_hovered(entity.pos, entity.dim) {continue}
-			if entity.on_click == nil {unreachable()}
-			entity.on_click()
-		    }
+                    if mouse_event.type != .Press {return}
+                    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+                        if !entity.clickable {continue}
+                        if !is_hovered(entity.pos, entity.dim) {continue}
+                        if entity.on_click == nil {unreachable()}
+                        entity.on_click()
+                    }
                 }
             }
         }
