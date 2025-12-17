@@ -100,11 +100,8 @@ main :: proc() {
     game := init_game()
     // main loop
     for !glfw.WindowShouldClose(gc.window) {
-	// system interactions for frame
 	glfw.PollEvents()
 	
-        // update game state for those interactions
-	// flush our event queue - populated by callbacks like glfwSetMouseButtonCallback, 
 	if EVENT_BUFFER_COUNT > 0 {
 	    for event in EVENT_BUFFER[:EVENT_BUFFER_COUNT] {
 		game_handle_event(&game, event)
@@ -112,7 +109,6 @@ main :: proc() {
 	    EVENT_BUFFER_COUNT = 0
 	}
 	
-	// draw frame
         draw_game(game)
         render_frame(&renderer)
     }
