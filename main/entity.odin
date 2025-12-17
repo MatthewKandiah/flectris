@@ -4,13 +4,11 @@ ENTITY_BUFFER_SIZE :: 1000
 ENTITY_BUFFER := [ENTITY_BUFFER_SIZE]Entity{}
 ENTITY_COUNT := 0
 
-VoidCallback :: #type () -> void
-
 Entity :: struct {
     pos:       Pos,
     dim:       Dim,
     clickable: bool,
-    on_click:  VoidCallback,
+    on_click:  proc(),
     type:      EntityType,
     data:      EntityData,
 }
@@ -33,7 +31,7 @@ entity_push :: proc(entity: Entity) {
     ENTITY_COUNT += 1
 }
 
-button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: VoidCallback) -> Entity {
+button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc()) -> Entity {
     return Entity{pos = pos, dim = dim, clickable = true, type = .Button, on_click = on_click, data = ButtonEntityData{str = str, hovered = hovered},}
 }
 

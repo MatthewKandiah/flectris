@@ -91,10 +91,12 @@ game_handle_event :: proc(game: ^Game, event: Event) {
             case .Mouse:
                 {
                     mouse_event := event.data.(MouseEvent)
+		    if mouse_event.type != .Press {return}
 		    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
 			if !entity.clickable {continue}
 			if !is_hovered(entity.pos, entity.dim) {continue}
-			// TODO - do __something__ for clicked entity
+			if entity.on_click == nil {unreachable()}
+			entity.on_click()
 		    }
                 }
             }
