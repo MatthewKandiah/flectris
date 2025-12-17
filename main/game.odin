@@ -46,7 +46,7 @@ game_populate_entities :: proc(game: Game) {
             } else if game_state.count == 1 {
                 game_str = "1"
             } else {
-                game_str = "Whoops"
+                game_str = "WHOOPS"
             }
             button_dim := Dim {
                 w = 400,
@@ -138,11 +138,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                 {
                     key_event := event.data.(KeyboardEvent)
                     if (key_event.type == .Press && key_event.char == .Space) {
-                        (&game.state.(GameState)).count -= 1
-                        if game.state.(GameState).count <= 0 {
-                            game.screen = .MAIN_MENU
-                            game.state = initial_main_menu_state
-                        }
+                        decrement_count_on_click(game)
                     }
                 }
             case .Mouse:
@@ -176,6 +172,10 @@ exit_on_click :: proc(_: ^Game) {
 }
 
 decrement_count_on_click :: proc(game: ^Game) {
-    blah := &game.state.(GameState)
-    blah.count -= 1
+    gs := &game.state.(GameState)
+    gs.count -= 1
+    if gs.count <= 0 {
+	game.screen = .MAIN_MENU
+	game.state = initial_main_menu_state
+    }
 }
