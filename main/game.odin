@@ -63,6 +63,7 @@ game_populate_entities :: proc(game: Game) {
                     start_button_dim,
                     transmute([]u8)start_str,
                     is_hovered(start_button_pos, start_button_dim),
+		    start_game_on_click,
                 ),
             )
             entity_push(
@@ -71,19 +72,11 @@ game_populate_entities :: proc(game: Game) {
                     exit_button_dim,
                     transmute([]u8)exit_str,
                     is_hovered(exit_button_pos, exit_button_dim),
+		    exit_on_click,
                 ),
             )
         }
     }
-}
-
-is_hovered :: proc(button_pos: Pos, button_dim: Dim) -> bool {
-    return(
-        !(gc.cursor_pos.x < button_pos.x ||
-            gc.cursor_pos.x > button_pos.x + button_dim.w ||
-            gc.cursor_pos.y < button_pos.y ||
-            gc.cursor_pos.y > button_pos.y + button_dim.h) \
-    )
 }
 
 game_handle_event :: proc(game: ^Game, event: Event) {
@@ -98,7 +91,11 @@ game_handle_event :: proc(game: ^Game, event: Event) {
             case .Mouse:
                 {
                     mouse_event := event.data.(MouseEvent)
-                    // TODO - handle clicks on any clickable entities
+		    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+			if !entity.clickable {continue}
+			if !is_hovered(entity.pos, entity.dim) {continue}
+			// TODO - do __something__ for clicked entity
+		    }
                 }
             }
         }
@@ -128,4 +125,12 @@ game_handle_event :: proc(game: ^Game, event: Event) {
 Screen :: enum {
     MAIN_MENU,
     GAME,
+}
+
+start_game_on_click :: proc() {
+    fmt.println("start")
+}
+
+exit_on_click :: proc() {
+    fmt.println("exit")
 }
