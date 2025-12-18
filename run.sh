@@ -2,9 +2,14 @@
 
 set -eu
 
+mkdir -p ./build
+
 echo "Compiling shaders..."
-glslc -o vert.spv shaders/main.vert -g
-glslc -o frag.spv shaders/main.frag -g
+glslc -o build/vert.spv shaders/main.vert -g
+glslc -o build/frag.spv shaders/main.frag -g
+
+echo "Building main..."
+odin build main -out:build/main.bin -debug
 
 echo "Running main..."
-odin run main -debug
+./build/main.bin

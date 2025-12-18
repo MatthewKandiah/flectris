@@ -9,8 +9,8 @@ import "vendor:stb/image"
 import "vendor:vulkan"
 import "vk"
 
-VERTEX_SHADER_PATH :: "vert.spv"
-FRAGMENT_SHADER_PATH :: "frag.spv"
+VERTEX_SHADER_PATH :: "build/vert.spv"
+FRAGMENT_SHADER_PATH :: "build/frag.spv"
 SMILEY_TEXTURE_PATH :: "main/smiley.png"
 FONT_TEXTURE_PATH :: "main/font.png"
 
