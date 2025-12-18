@@ -11,8 +11,7 @@ import "vk"
 
 VERTEX_SHADER_PATH :: "build/vert.spv"
 FRAGMENT_SHADER_PATH :: "build/frag.spv"
-SMILEY_TEXTURE_PATH :: "main/smiley.png"
-FONT_TEXTURE_PATH :: "main/font.png"
+FONT_TEXTURE_PATH :: "assets/font.png"
 
 VERTEX_BUFFER_SIZE :: 10_000
 VERTEX_BUFFER := [VERTEX_BUFFER_SIZE]Vertex{}

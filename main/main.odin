@@ -3,6 +3,7 @@ package main
 import "base:runtime"
 import "core:fmt"
 import "core:math/linalg/glsl"
+import "core:time"
 import "vendor:glfw"
 import "vendor:vulkan"
 import "vk"
@@ -25,7 +26,7 @@ GlobalContext :: struct {
     vk_surface:     vulkan.SurfaceKHR,
     vk_instance:    vulkan.Instance,
     surface_extent: vulkan.Extent2D,
-    cursor_pos : Pos,
+    cursor_pos:     Pos,
 }
 gc: GlobalContext
 
@@ -90,27 +91,34 @@ main :: proc() {
         }
     }
 
-    { // setup input handling
-	glfw.SetCursorPosCallback(gc.window, mouse_pos_callback)
-	glfw.SetMouseButtonCallback(gc.window, mouse_button_callback)
-	glfw.SetKeyCallback(gc.window, key_callback)
+    {     // setup input handling
+        glfw.SetCursorPosCallback(gc.window, mouse_pos_callback)
+        glfw.SetMouseButtonCallback(gc.window, mouse_button_callback)
+        glfw.SetKeyCallback(gc.window, key_callback)
     }
 
     renderer := init_renderer()
     game := init_game()
+    stopwatch := time.Stopwatch{}
     // main loop
     for !glfw.WindowShouldClose(gc.window) {
+	time.stopwatch_start(&stopwatch)
 	glfw.PollEvents()
-	
-	if EVENT_BUFFER_COUNT > 0 {
-	    for event in EVENT_BUFFER[:EVENT_BUFFER_COUNT] {
-		game_handle_event(&game, event)
-	    }
-	    EVENT_BUFFER_COUNT = 0
-	}
-	game_populate_entities(game)
+
+        for event in EVENT_BUFFER[:EVENT_BUFFER_COUNT] {
+            game_handle_event(&game, event)
+        }
+        EVENT_BUFFER_COUNT = 0
+
+        game_populate_entities(game)
         draw_entities()
         render_frame(&renderer)
+
+	h,m,s,nanos := time.precise_clock_from_stopwatch(stopwatch)
+	for nanos < 16_666_000 {
+	    h,m,s,nanos = time.precise_clock_from_stopwatch(stopwatch)
+	} 
+	time.stopwatch_reset(&stopwatch)
     }
 }
 
@@ -131,36 +139,32 @@ get_proc_address :: proc(p: rawptr, name: cstring) {
 mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32) {
     if button != glfw.MOUSE_BUTTON_LEFT {return}
     EVENT_BUFFER[EVENT_BUFFER_COUNT] = Event {
-	type = .Mouse,
-	data = MouseEvent {
-	    pos = gc.cursor_pos,
-	    type = .Press if action == glfw.PRESS else .Release,
-	    button = .Left,
-	}
+        type = .Mouse,
+        data = MouseEvent{pos = gc.cursor_pos, type = .Press if action == glfw.PRESS else .Release, button = .Left},
     }
     EVENT_BUFFER_COUNT += 1
 }
 
 mouse_pos_callback :: proc "c" (window: glfw.WindowHandle, xpos, ypos: f64) {
-    gc.cursor_pos = {x = cast(f32)xpos, y = cast(f32)gc.surface_extent.height - cast(f32)ypos}
+    gc.cursor_pos = {
+        x = cast(f32)xpos,
+        y = cast(f32)gc.surface_extent.height - cast(f32)ypos,
+    }
 }
 
 key_callback :: proc "c" (window: glfw.WindowHandle, key: i32, scancode: i32, action: i32, mods: i32) {
     key, ok := get_key_from_glfw_key_code(key)
     if !ok {
-	return
+        return
     }
-    
+
     if action == glfw.REPEAT {
-	return
+        return
     }
-    
+
     EVENT_BUFFER[EVENT_BUFFER_COUNT] = Event {
-	type = .Keyboard,
-	data = KeyboardEvent {
-	    char = key,
-	    type = .Press if action == glfw.PRESS else .Release,
-	},
+        type = .Keyboard,
+        data = KeyboardEvent{char = key, type = .Press if action == glfw.PRESS else .Release},
     }
     EVENT_BUFFER_COUNT += 1
 }
@@ -168,16 +172,16 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key: i32, scancode: i32, ac
 get_key_from_glfw_key_code :: proc "c" (key_code: i32) -> (Key, bool) {
     switch (key_code) {
     case glfw.KEY_LEFT:
-	{return .Left, true}
+        {return .Left, true}
     case glfw.KEY_RIGHT:
-	{return .Right, true}
+        {return .Right, true}
     case glfw.KEY_UP:
-	{return .Up, true}
+        {return .Up, true}
     case glfw.KEY_DOWN:
-	{return .Down, true}
+        {return .Down, true}
     case glfw.KEY_SPACE:
-	{return .Space, true}
+        {return .Space, true}
     case:
-	{return {}, false}
+        {return {}, false}
     }
 }
