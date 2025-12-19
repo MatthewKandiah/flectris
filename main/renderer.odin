@@ -59,10 +59,7 @@ Renderer :: struct {
 }
 
 drawable_dim_to_screen_dim :: proc(dim: Dim) -> Dim {
-    return Dim {
-	w = 2 * dim.w / cast(f32)gc.surface_extent.width,
-	h = 2 * dim.h / cast(f32)gc.surface_extent.height,
-    }
+    return Dim{w = 2 * dim.w / cast(f32)gc.surface_extent.width, h = 2 * dim.h / cast(f32)gc.surface_extent.height}
 }
 
 drawable_pos_to_screen_pos :: proc(pos: Pos) -> Pos {
@@ -112,7 +109,6 @@ draw_drawables :: proc() {
         INDEX_BUFFER[index_base_idx + 4] = cast(u32)(vertex_base_idx + 1)
         INDEX_BUFFER[index_base_idx + 5] = cast(u32)(vertex_base_idx + 3)
     }
-    DRAWABLES_COUNT = 0
 }
 
 init_renderer :: proc() -> (renderer: Renderer) {
@@ -670,10 +666,13 @@ deinit_renderer :: proc(using renderer: ^Renderer) {
 render_frame :: proc(renderer: ^Renderer) {
     if gc.window_resized {
         handle_screen_resized(renderer)
+	DRAWABLES_COUNT = 0
         return
+    } else {
+        draw_drawables()
+	DRAWABLES_COUNT = 0
     }
 
-    draw_drawables()
     {     // copy vertex data into vertex buffer
         intrinsics.mem_copy_non_overlapping(
             renderer.vertex_buffer_memory_mapped,
@@ -1187,11 +1186,7 @@ create_depth_image_and_view :: proc(renderer: ^Renderer) {
             sType = .IMAGE_CREATE_INFO,
             imageType = .D2,
             format = .D32_SFLOAT,
-            extent = vulkan.Extent3D {
-                width = gc.surface_extent.width,
-                height = gc.surface_extent.height,
-                depth = 1,
-            },
+            extent = vulkan.Extent3D{width = gc.surface_extent.width, height = gc.surface_extent.height, depth = 1},
             mipLevels = 1,
             arrayLayers = 1,
             tiling = .OPTIMAL,

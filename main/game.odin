@@ -21,11 +21,54 @@ generate_main_menu_entities :: proc() {
 }
 
 GameState :: struct {
-    count: int,
+    grid:                  [GRID_WIDTH * GRID_HEIGHT]bool,
+    active_piece:          Piece,
+    active_piece_position: GridPos,
+    has_active_piece:      bool,
+}
+
+GridPos :: struct {
+    x: i32,
+    y: i32,
+}
+
+Piece :: struct {
+    filled: [PIECE_WIDTH * PIECE_HEIGHT]bool,
 }
 
 initial_game_state :: GameState {
-    count = 3,
+    grid = {},
+    active_piece = Piece {
+        filled = {
+            true,
+            false,
+            false,
+            false,
+            false, //
+            true,
+            false,
+            false,
+            false,
+            false, //
+            true,
+            true,
+            true,
+            false,
+            false, //
+            true,
+            true,
+            false,
+            false,
+            false, //
+            true,
+            false,
+            false,
+            false,
+            false, //
+        },
+    },
+    active_piece_position = {x = 3, y = 10},
+    has_active_piece = true,
 }
 
 init_game :: proc() -> Game {
@@ -38,31 +81,23 @@ game_populate_entities :: proc(game: Game) {
     case .GAME:
         {
             game_state := game.state.(GameState)
-            game_str: string
-            if game_state.count == 3 {
-                game_str = "3"
-            } else if game_state.count == 2 {
-                game_str = "2"
-            } else if game_state.count == 1 {
-                game_str = "1"
-            } else {
-                game_str = "WHOOPS"
+
+            grid_pos := Pos {
+                x = 50,
+                y = 50,
             }
-            button_dim := Dim {
-                w = 400,
+            grid_dim := Dim {
+                w = 200,
                 h = 400,
             }
-            button_pos := Pos {
-                x = button_dim.w / 2 - button_dim.w / 2,
-                y = button_dim.h / 2 - button_dim.h / 2,
-            }
-	    entity_push(
-                button_entity(
-                    button_pos,
-                    button_dim,
-                    transmute([]u8)game_str,
-                    is_hovered(button_pos, button_dim),
-                    decrement_count_on_click,
+            entity_push(
+                grid_entity(
+                    grid_pos,
+                    grid_dim,
+                    game_state.grid,
+                    game_state.has_active_piece,
+                    game_state.active_piece_position,
+                    game_state.active_piece,
                 ),
             )
         }
@@ -138,19 +173,19 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                 {
                     key_event := event.data.(KeyboardEvent)
                     if (key_event.type == .Press && key_event.char == .Space) {
-                        decrement_count_on_click(game)
+                        exit_on_click(game)
                     }
                 }
             case .Mouse:
                 {
                     mouse_event := event.data.(MouseEvent)
-		    if mouse_event.type != .Press {return}
-		    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-			if !entity.clickable {continue}
-			if !is_hovered(entity.pos, entity.dim) {continue}
-			if entity.on_click == nil {unreachable()}
-			entity.on_click(game)
-		    }
+                    if mouse_event.type != .Press {return}
+                    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+                        if !entity.clickable {continue}
+                        if !is_hovered(entity.pos, entity.dim) {continue}
+                        if entity.on_click == nil {unreachable()}
+                        entity.on_click(game)
+                    }
                 }
             }
         }
@@ -169,13 +204,4 @@ start_game_on_click :: proc(game: ^Game) {
 
 exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
-}
-
-decrement_count_on_click :: proc(game: ^Game) {
-    gs := &game.state.(GameState)
-    gs.count -= 1
-    if gs.count <= 0 {
-	game.screen = .MAIN_MENU
-	game.state = initial_main_menu_state
-    }
 }

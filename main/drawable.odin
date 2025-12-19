@@ -5,6 +5,8 @@ import "vendor:glfw"
 import "vendor:vulkan"
 
 BACKGROUND_Z :: 0
+GRID_BACKGROUND_Z :: 0.1
+GRID_CELL_Z :: 0.2
 UI_TEXT_BACKGROUND_Z :: 0.8
 UI_TEXT_Z :: 0.9
 
@@ -79,6 +81,8 @@ draw_entity :: proc(entity: Entity) {
     switch entity.type {
     case .Button:
         draw_button(entity)
+    case .Grid:
+        draw_grid(entity)
     }
 }
 
@@ -87,6 +91,28 @@ draw_button :: proc(entity: Entity) {
     colour := RED if data.hovered else BLUE
     draw_rect(colour, entity.pos, entity.dim, UI_TEXT_BACKGROUND_Z)
     draw_string(data.str, entity.pos, entity.dim, UI_TEXT_Z)
+}
+
+draw_grid :: proc(entity: Entity) {
+    // draw background
+    draw_rect(GREEN, entity.pos, entity.dim, GRID_BACKGROUND_Z)
+    // draw filled cells
+    data := entity.data.(GridEntityData)
+    cell_dim := Dim {
+        w = entity.dim.w / GRID_WIDTH,
+        h = entity.dim.h / GRID_HEIGHT,
+    }
+    filled_colour := RED
+    empty_colour := BLUE
+    for filled, idx in data.cells {
+        col_idx := idx % GRID_WIDTH
+        row_idx := idx / GRID_WIDTH
+        cell_pos := Pos {
+            x = entity.pos.x + cast(f32)col_idx * cell_dim.w,
+            y = entity.pos.y + cast(f32)row_idx * cell_dim.h,
+        }
+	draw_rect(filled_colour if filled else empty_colour, cell_pos, cell_dim, GRID_CELL_Z)
+    }
 }
 
 draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
