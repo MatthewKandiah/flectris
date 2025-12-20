@@ -21,6 +21,7 @@ generate_main_menu_entities :: proc() {
 }
 
 GameState :: struct {
+    has_lost:              bool,
     grid:                  [GRID_WIDTH * GRID_HEIGHT]bool,
     active_piece:          Piece,
     active_piece_position: GridPos,
@@ -61,18 +62,18 @@ piece :: Piece {
         true,
         true,
         true, //
-        true,
-        true,
-        true,
-        true,
-        true, //
-        true,
-        true,
-        true,
-        true,
-        true, //
+        false,
+        false,
+        false,
+        false,
+        false, //
+        false,
+        false,
+        false,
+        false,
+        false, //
     },
-    bounding_dim = {w = 5, h = 5},
+    bounding_dim = {w = 5, h = 3},
 }
 
 initial_game_state :: GameState {
@@ -82,6 +83,7 @@ initial_game_state :: GameState {
     has_active_piece = true,
     ticks_per_drop = 60,
     ticks_until_drop = 60,
+    has_lost = false,
 }
 
 init_game :: proc() -> Game {
@@ -271,7 +273,11 @@ deactivate_piece :: proc(gs: ^GameState) {
         if !val {continue}
         x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
         y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
-        gs.grid[y * GRID_WIDTH + x] = true
+        if y >= GRID_HEIGHT {
+            gs.has_lost = true
+        } else {
+            gs.grid[y * GRID_WIDTH + x] = true
+        }
     }
 }
 
@@ -284,7 +290,7 @@ game_update :: proc(game: ^Game) {
             game_state := &game.state.(GameState)
 
             // spawn piece if needed
-            if !game_state.has_active_piece {
+            if !game_state.has_lost && !game_state.has_active_piece {
                 game_state.active_piece = piece
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
@@ -352,7 +358,7 @@ grid_removed_row_count :: proc(row_idx: int, filled_line_idxs: []int) -> (rm_row
         if filled_line_idx > row_idx {return}
         if filled_line_idx < row_idx {rm_rows_count += 1}
         if filled_line_idx == row_idx {
-	    rm_rows_count += 1
+            rm_rows_count += 1
             // count contiguous filled rows above current row
             for j, count in idx + 1 ..< len(filled_line_idxs) {
                 if filled_line_idxs[j] == row_idx + count + 1 {
