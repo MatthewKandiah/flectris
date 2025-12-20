@@ -44,38 +44,40 @@ Piece :: struct {
     bounding_dim: GridDim,
 }
 
+piece :: Piece {
+    filled = {
+        true,
+        false,
+        false,
+        false,
+        false, //
+        true,
+        false,
+        false,
+        false,
+        false, //
+        true,
+        true,
+        true,
+        false,
+        false, //
+        true,
+        true,
+        false,
+        false,
+        false, //
+        true,
+        false,
+        false,
+        false,
+        false, //
+    },
+    bounding_dim = {w = 3, h = 5},
+}
+
 initial_game_state :: GameState {
     grid = {},
-    active_piece = Piece {
-        filled = {
-            true,
-            false,
-            false,
-            false,
-            false, //
-            true,
-            false,
-            false,
-            false,
-            false, //
-            true,
-            true,
-            true,
-            false,
-            false, //
-            true,
-            true,
-            false,
-            false,
-            false, //
-            true,
-            false,
-            false,
-            false,
-            false, //
-        },
-        bounding_dim = {w = 3, h = 5},
-    },
+    active_piece = piece,
     active_piece_position = {x = 3, y = 10},
     has_active_piece = true,
     ticks_per_drop = 60,
@@ -179,7 +181,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
         }
     case .GAME:
         {
-	    game_state := &game.state.(GameState)
+            game_state := &game.state.(GameState)
             switch event.type {
             case .Keyboard:
                 {
@@ -238,10 +240,10 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
     if updated_pos.x + gs.active_piece.bounding_dim.w >
        GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
     if updated_pos.y < 0 {
-	updated_pos.y = 0
-	collided_bottom = true
+        updated_pos.y = 0
+        collided_bottom = true
     }
-    
+
     gs.active_piece_position = updated_pos
     return collided_bottom
 }
@@ -249,10 +251,10 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
 deactivate_piece :: proc(gs: ^GameState) {
     gs.has_active_piece = false
     for val, idx in gs.active_piece.filled {
-	if !val {continue}
-	x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
-	y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
-	gs.grid[y * GRID_WIDTH + x] = true
+        if !val {continue}
+        x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
+        y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
+        gs.grid[y * GRID_WIDTH + x] = true
     }
 }
 
@@ -262,16 +264,23 @@ game_update :: proc(game: ^Game) {
         {}
     case .GAME:
         {
-	    game_state := &game.state.(GameState)
-	    game_state.ticks_until_drop -= 1
-	    if game_state.ticks_until_drop <= 0 {
-		game_state.ticks_until_drop = game_state.ticks_per_drop
+            game_state := &game.state.(GameState)
 
-		collided := update_active_piece_position(game_state, 0, -1)
-		if collided {
-		    deactivate_piece(game_state)
-		}
+	    if !game_state.has_active_piece {
+		game_state.active_piece = piece
+		game_state.active_piece_position = GridPos{x = GRID_WIDTH / 2 - 1, y = GRID_HEIGHT}
+		game_state.has_active_piece = true
 	    }
+	    
+            game_state.ticks_until_drop -= 1
+            if game_state.ticks_until_drop <= 0 {
+                game_state.ticks_until_drop = game_state.ticks_per_drop
+
+                collided := update_active_piece_position(game_state, 0, -1)
+                if collided {
+                    deactivate_piece(game_state)
+                }
+            }
         }
     }
 }
