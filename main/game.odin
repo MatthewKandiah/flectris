@@ -47,32 +47,32 @@ Piece :: struct {
 piece :: Piece {
     filled = {
         true,
-        false,
-        false,
-        false,
-        false, //
-        true,
-        false,
-        false,
-        false,
-        false, //
         true,
         true,
         true,
-        false,
-        false, //
+        true, //
         true,
         true,
-        false,
-        false,
-        false, //
         true,
-        false,
-        false,
-        false,
-        false, //
+        true,
+        true, //
+        true,
+        true,
+        true,
+        true,
+        true, //
+        true,
+        true,
+        true,
+        true,
+        true, //
+        true,
+        true,
+        true,
+        true,
+        true, //
     },
-    bounding_dim = {w = 3, h = 5},
+    bounding_dim = {w = 5, h = 5},
 }
 
 initial_game_state :: GameState {
@@ -251,16 +251,16 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
         if !val {continue}
         x := updated_pos.x + (cast(i32)idx % PIECE_WIDTH)
         y := updated_pos.y + (cast(i32)idx / PIECE_WIDTH)
-	if y >= GRID_HEIGHT {continue}
-	
+        if y >= GRID_HEIGHT {continue}
+
         if gs.grid[y * GRID_WIDTH + x] == true {
-	    updated_pos = gs.active_piece_position
-	    if delta_y < 0 {
-		collided_bottom = true
-	    }
-	}
+            updated_pos = gs.active_piece_position
+            if delta_y < 0 {
+                collided_bottom = true
+            }
+        }
     }
-    
+
     gs.active_piece_position = updated_pos
     return collided_bottom
 }
@@ -283,6 +283,7 @@ game_update :: proc(game: ^Game) {
         {
             game_state := &game.state.(GameState)
 
+            // spawn piece if needed
             if !game_state.has_active_piece {
                 game_state.active_piece = piece
                 game_state.active_piece_position = GridPos {
@@ -292,6 +293,7 @@ game_update :: proc(game: ^Game) {
                 game_state.has_active_piece = true
             }
 
+            // automatically lower piece
             game_state.ticks_until_drop -= 1
             if game_state.ticks_until_drop <= 0 {
                 game_state.ticks_until_drop = game_state.ticks_per_drop
@@ -301,6 +303,66 @@ game_update :: proc(game: ^Game) {
                     deactivate_piece(game_state)
                 }
             }
+
+            // clear filled lines
+            filled_line_idxs := [PIECE_HEIGHT]int{}
+            filled_line_count := 0
+            for row_idx in 0 ..< GRID_HEIGHT {
+                if grid_row_is_filled(game_state, row_idx) {
+                    filled_line_idxs[filled_line_count] = row_idx
+                    filled_line_count += 1
+                }
+            }
+            for row_idx in 0 ..< GRID_HEIGHT - filled_line_count {
+                removed_row_count := grid_removed_row_count(row_idx, filled_line_idxs[:filled_line_count])
+                if removed_row_count == 0 {
+                    continue
+                } else {
+                    for col_idx in 0 ..< GRID_WIDTH {
+                        write_idx := row_idx * GRID_WIDTH + col_idx
+                        read_idx := (row_idx + removed_row_count) * GRID_WIDTH + col_idx
+                        game_state.grid[write_idx] = game_state.grid[read_idx]
+                    }
+                }
+            }
+            for row_idx in GRID_HEIGHT - filled_line_count ..< GRID_HEIGHT {
+                for col_idx in 0 ..< GRID_WIDTH {
+                    game_state.grid[row_idx * GRID_WIDTH + col_idx] = false
+                }
+            }
         }
     }
+}
+
+grid_row_is_filled :: proc(gs: ^GameState, row_idx: int) -> bool {
+    assert(row_idx >= 0 || row_idx < GRID_HEIGHT, "row must be inside grid")
+    grid_idx := row_idx * GRID_WIDTH
+    row := gs.grid[grid_idx:grid_idx + GRID_WIDTH]
+    for filled in row {
+        if !filled {return false}
+    }
+    return true
+}
+
+grid_removed_row_count :: proc(row_idx: int, filled_line_idxs: []int) -> (rm_rows_count: int) {
+    idx := 0
+    if len(filled_line_idxs) == 0 {return}
+    for idx < len(filled_line_idxs) {
+        filled_line_idx := filled_line_idxs[idx]
+        if filled_line_idx > row_idx {return}
+        if filled_line_idx < row_idx {rm_rows_count += 1}
+        if filled_line_idx == row_idx {
+	    rm_rows_count += 1
+            // count contiguous filled rows above current row
+            for j, count in idx + 1 ..< len(filled_line_idxs) {
+                if filled_line_idxs[j] == row_idx + count + 1 {
+                    rm_rows_count += 1
+                } else {
+                    return
+                }
+            }
+        }
+        idx += 1
+    }
+    return
 }
