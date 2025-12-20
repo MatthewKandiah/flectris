@@ -66,11 +66,13 @@ grid_entity :: proc(
     }
     if has_active_piece {
         for val, idx in active_piece.filled {
+	    if !val {continue}
             grid_pos := GridPos {
                 x = active_piece_position.x + cast(i32)idx % PIECE_WIDTH,
                 y = active_piece_position.y + cast(i32)idx / PIECE_WIDTH,
             }
-            data.cells[GRID_WIDTH * grid_pos.y + grid_pos.x] = val
+	    if grid_pos.y >= GRID_HEIGHT {continue}
+            data.cells[GRID_WIDTH * grid_pos.y + grid_pos.x] = true
         }
     }
     return Entity{pos = pos, dim = dim, data = data, type = .Grid}

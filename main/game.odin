@@ -187,7 +187,9 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                         update_active_piece_position(game, 1, 0)
                     } else if (key_event.type == .Press && key_event.char == .Down) {
                         update_active_piece_position(game, 0, -1)
-                    }
+                    } else if (key_event.type == .Press && key_event.char == .Up) {
+			update_active_piece_position(game, 0, 1)
+		    }
                 }
             case .Mouse:
                 {
