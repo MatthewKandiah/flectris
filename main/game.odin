@@ -236,6 +236,8 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
         x = gs.active_piece_position.x + delta_x,
         y = gs.active_piece_position.y + delta_y,
     }
+
+    // check you stay in grid
     if updated_pos.x < 0 {updated_pos.x = 0}
     if updated_pos.x + gs.active_piece.bounding_dim.w >
        GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
@@ -244,6 +246,21 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
         collided_bottom = true
     }
 
+    // check you don't overlap existing pieces
+    for val, idx in gs.active_piece.filled {
+        if !val {continue}
+        x := updated_pos.x + (cast(i32)idx % PIECE_WIDTH)
+        y := updated_pos.y + (cast(i32)idx / PIECE_WIDTH)
+	if y >= GRID_HEIGHT {continue}
+	
+        if gs.grid[y * GRID_WIDTH + x] == true {
+	    updated_pos = gs.active_piece_position
+	    if delta_y < 0 {
+		collided_bottom = true
+	    }
+	}
+    }
+    
     gs.active_piece_position = updated_pos
     return collided_bottom
 }
@@ -266,12 +283,15 @@ game_update :: proc(game: ^Game) {
         {
             game_state := &game.state.(GameState)
 
-	    if !game_state.has_active_piece {
-		game_state.active_piece = piece
-		game_state.active_piece_position = GridPos{x = GRID_WIDTH / 2 - 1, y = GRID_HEIGHT}
-		game_state.has_active_piece = true
-	    }
-	    
+            if !game_state.has_active_piece {
+                game_state.active_piece = piece
+                game_state.active_piece_position = GridPos {
+                    x = GRID_WIDTH / 2 - 1,
+                    y = GRID_HEIGHT,
+                }
+                game_state.has_active_piece = true
+            }
+
             game_state.ticks_until_drop -= 1
             if game_state.ticks_until_drop <= 0 {
                 game_state.ticks_until_drop = game_state.ticks_per_drop
