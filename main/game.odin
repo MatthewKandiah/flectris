@@ -25,6 +25,8 @@ GameState :: struct {
     active_piece:          Piece,
     active_piece_position: GridPos,
     has_active_piece:      bool,
+    ticks_until_drop:      int,
+    ticks_per_drop:        int,
 }
 
 GridPos :: struct {
@@ -76,6 +78,8 @@ initial_game_state :: GameState {
     },
     active_piece_position = {x = 3, y = 10},
     has_active_piece = true,
+    ticks_per_drop = 60,
+    ticks_until_drop = 60,
 }
 
 init_game :: proc() -> Game {
@@ -175,6 +179,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
         }
     case .GAME:
         {
+	    game_state := &game.state.(GameState)
             switch event.type {
             case .Keyboard:
                 {
@@ -182,14 +187,14 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                     if (key_event.type == .Press && key_event.char == .Space) {
                         exit_on_click(game)
                     } else if (key_event.type == .Press && key_event.char == .Left) {
-                        update_active_piece_position(game, -1, 0)
+                        update_active_piece_position(game_state, -1, 0)
                     } else if (key_event.type == .Press && key_event.char == .Right) {
-                        update_active_piece_position(game, 1, 0)
+                        update_active_piece_position(game_state, 1, 0)
                     } else if (key_event.type == .Press && key_event.char == .Down) {
-                        update_active_piece_position(game, 0, -1)
+                        update_active_piece_position(game_state, 0, -1)
                     } else if (key_event.type == .Press && key_event.char == .Up) {
-			update_active_piece_position(game, 0, 1)
-		    }
+                        update_active_piece_position(game_state, 0, 1)
+                    }
                 }
             case .Mouse:
                 {
@@ -221,8 +226,7 @@ exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
 }
 
-update_active_piece_position :: proc(game: ^Game, delta_x, delta_y: i32) {
-    gs := &game.state.(GameState)
+update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) {
     assert(abs(delta_x) <= 1 && abs(delta_y) <= 1, "larger jumps not currently supported")
     updated_pos := GridPos {
         x = gs.active_piece_position.x + delta_x,
@@ -230,7 +234,23 @@ update_active_piece_position :: proc(game: ^Game, delta_x, delta_y: i32) {
     }
     if updated_pos.x < 0 {updated_pos.x = 0}
     if updated_pos.x + gs.active_piece.bounding_dim.w >
-	GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
+       GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
     if updated_pos.y < 0 {updated_pos.y = 0}
     gs.active_piece_position = updated_pos
+}
+
+game_update :: proc(game: ^Game) {
+    switch game.screen {
+    case .MAIN_MENU:
+        {}
+    case .GAME:
+        {
+	    game_state := &game.state.(GameState)
+	    game_state.ticks_until_drop -= 1
+	    if game_state.ticks_until_drop <= 0 {
+		update_active_piece_position(game_state, 0, -1)
+		game_state.ticks_until_drop = game_state.ticks_per_drop
+	    }
+        }
+    }
 }

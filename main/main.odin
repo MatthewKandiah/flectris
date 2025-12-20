@@ -105,11 +105,12 @@ main :: proc() {
 	time.stopwatch_start(&stopwatch)
 	glfw.PollEvents()
 
+	game_update(&game)
         for event in EVENT_BUFFER[:EVENT_BUFFER_COUNT] {
             game_handle_event(&game, event)
         }
         EVENT_BUFFER_COUNT = 0
-
+	
         game_populate_entities(game)
         draw_entities()
         render_frame(&renderer)
