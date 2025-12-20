@@ -5,8 +5,8 @@ Tetris but you can pick your tileset.
 - Write tetris / tetris block designer
 
 ## Short term plan
-- update active piece position
-- add line clears
+- randomise next piece
+- rotate piece
 - make prettier => instead of cells being filled/unfilled, we want to be able to use different textures for them
 
 - refactor entity click handling to reduce copy-pasting
