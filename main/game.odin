@@ -32,8 +32,14 @@ GridPos :: struct {
     y: i32,
 }
 
+GridDim :: struct {
+    w: i32,
+    h: i32,
+}
+
 Piece :: struct {
-    filled: [PIECE_WIDTH * PIECE_HEIGHT]bool,
+    filled:       [PIECE_WIDTH * PIECE_HEIGHT]bool,
+    bounding_dim: GridDim,
 }
 
 initial_game_state :: GameState {
@@ -66,6 +72,7 @@ initial_game_state :: GameState {
             false,
             false, //
         },
+        bounding_dim = {w = 3, h = 5},
     },
     active_piece_position = {x = 3, y = 10},
     has_active_piece = true,
@@ -174,6 +181,12 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                     key_event := event.data.(KeyboardEvent)
                     if (key_event.type == .Press && key_event.char == .Space) {
                         exit_on_click(game)
+                    } else if (key_event.type == .Press && key_event.char == .Left) {
+                        update_active_piece_position(game, -1, 0)
+                    } else if (key_event.type == .Press && key_event.char == .Right) {
+                        update_active_piece_position(game, 1, 0)
+                    } else if (key_event.type == .Press && key_event.char == .Down) {
+                        update_active_piece_position(game, 0, -1)
                     }
                 }
             case .Mouse:
@@ -204,4 +217,18 @@ start_game_on_click :: proc(game: ^Game) {
 
 exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
+}
+
+update_active_piece_position :: proc(game: ^Game, delta_x, delta_y: i32) {
+    gs := &game.state.(GameState)
+    assert(abs(delta_x) <= 1 && abs(delta_y) <= 1, "larger jumps not currently supported")
+    updated_pos := GridPos {
+        x = gs.active_piece_position.x + delta_x,
+        y = gs.active_piece_position.y + delta_y,
+    }
+    if updated_pos.x < 0 {updated_pos.x = 0}
+    if updated_pos.x + gs.active_piece.bounding_dim.w >
+	GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
+    if updated_pos.y < 0 {updated_pos.y = 0}
+    gs.active_piece_position = updated_pos
 }
