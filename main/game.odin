@@ -226,8 +226,10 @@ exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
 }
 
-update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) {
+update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (collided_bottom: bool) {
     assert(abs(delta_x) <= 1 && abs(delta_y) <= 1, "larger jumps not currently supported")
+    if !gs.has_active_piece {return}
+
     updated_pos := GridPos {
         x = gs.active_piece_position.x + delta_x,
         y = gs.active_piece_position.y + delta_y,
@@ -235,8 +237,23 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) {
     if updated_pos.x < 0 {updated_pos.x = 0}
     if updated_pos.x + gs.active_piece.bounding_dim.w >
        GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
-    if updated_pos.y < 0 {updated_pos.y = 0}
+    if updated_pos.y < 0 {
+	updated_pos.y = 0
+	collided_bottom = true
+    }
+    
     gs.active_piece_position = updated_pos
+    return collided_bottom
+}
+
+deactivate_piece :: proc(gs: ^GameState) {
+    gs.has_active_piece = false
+    for val, idx in gs.active_piece.filled {
+	if !val {continue}
+	x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
+	y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
+	gs.grid[y * GRID_WIDTH + x] = true
+    }
 }
 
 game_update :: proc(game: ^Game) {
@@ -248,8 +265,12 @@ game_update :: proc(game: ^Game) {
 	    game_state := &game.state.(GameState)
 	    game_state.ticks_until_drop -= 1
 	    if game_state.ticks_until_drop <= 0 {
-		update_active_piece_position(game_state, 0, -1)
 		game_state.ticks_until_drop = game_state.ticks_per_drop
+
+		collided := update_active_piece_position(game_state, 0, -1)
+		if collided {
+		    deactivate_piece(game_state)
+		}
 	    }
         }
     }
