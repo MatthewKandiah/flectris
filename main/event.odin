@@ -30,6 +30,8 @@ Key :: enum {
     Up,
     Down,
     Space,
+    S,
+    T,
 }
 
 KeyboardEvent :: struct {

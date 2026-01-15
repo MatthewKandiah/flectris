@@ -198,6 +198,10 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                         update_active_piece_position(game_state, 0, -1)
                     } else if (key_event.type == .Press && key_event.char == .Up) {
                         update_active_piece_position(game_state, 0, 1)
+                    } else if (key_event.type == .Press && key_event.char == .S) {
+                        rotate_active_piece_anticlockwise(game_state)
+                    } else if (key_event.type == .Press && key_event.char == .T) {
+                        rotate_active_piece_clockwise(game_state)
                     }
                 }
             case .Mouse:
@@ -228,6 +232,34 @@ start_game_on_click :: proc(game: ^Game) {
 
 exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
+}
+
+rotate_active_piece_clockwise :: proc(gs: ^GameState) {
+    assert(PIECE_WIDTH == PIECE_HEIGHT)
+    d := PIECE_WIDTH
+    updated_piece := Piece {
+        bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
+    }
+    for val, idx in gs.active_piece.filled {
+        write_col_idx := idx / d
+        write_row_idx := d - 1 - (idx % d)
+        updated_piece.filled[write_col_idx + write_row_idx * d] = val
+    }
+    gs.active_piece = updated_piece
+}
+
+rotate_active_piece_anticlockwise :: proc(gs: ^GameState) {
+    assert(PIECE_WIDTH == PIECE_HEIGHT)
+    d := PIECE_WIDTH
+    updated_piece := Piece {
+        bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
+    }
+    for val, idx in gs.active_piece.filled {
+	write_col_idx := d - 1 - (idx / d)
+	write_row_idx := idx % d
+	updated_piece.filled[write_col_idx + write_row_idx * d] = val
+    }
+    gs.active_piece = updated_piece
 }
 
 update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (collided_bottom: bool) {

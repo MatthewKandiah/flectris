@@ -1,5 +1,7 @@
 package main
 
+import "core:fmt"
+
 ENTITY_BUFFER_SIZE :: 1000
 ENTITY_BUFFER := [ENTITY_BUFFER_SIZE]Entity{}
 ENTITY_COUNT := 0

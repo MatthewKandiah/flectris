@@ -182,6 +182,10 @@ get_key_from_glfw_key_code :: proc "c" (key_code: i32) -> (Key, bool) {
         {return .Down, true}
     case glfw.KEY_SPACE:
         {return .Space, true}
+    case glfw.KEY_S:
+	{return .S, true}
+    case glfw.KEY_T:
+	{return .T, true}
     case:
         {return {}, false}
     }
