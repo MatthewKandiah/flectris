@@ -51,18 +51,18 @@ piece :: Piece {
         true,
         true,
         true,
+        true,
+        true, //
         false,
+        false,
+        true,
+        true,
+        true, //
+        false,
+        false,
+        true,
+        true,
         false, //
-        true,
-        true,
-        true,
-        true,
-        true, //
-        true,
-        true,
-        false,
-        true,
-        true, //
         false,
         false,
         false,
@@ -75,6 +75,7 @@ piece :: Piece {
         false, //
     },
     bounding_dim = {w = 5, h = 3},
+    rot_centre = {x = 1, y = 2},
 }
 
 initial_game_state :: GameState {
@@ -239,19 +240,19 @@ Dir :: enum {
     CLOCKWISE,
     ANTICLOCKWISE,
 }
+
 rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     updated_piece := Piece {
         bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
     }
-    // TODO - fix bug: rotations can leave bounding box displaced from bottom left if not 5x5
     switch dir {
     case .CLOCKWISE:
         {
-            updated_piece.filled = get_clockwise_rotated_filled_array(gs.active_piece.filled)
+            updated_piece.filled = get_clockwise_rotated_filled_array(gs.active_piece)
         }
     case .ANTICLOCKWISE:
         {
-            updated_piece.filled = get_anticlockwise_rotated_filled_array(gs.active_piece.filled)
+            updated_piece.filled = get_anticlockwise_rotated_filled_array(gs.active_piece)
         }
     }
 
@@ -277,37 +278,45 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
         y = gs.active_piece_position.y + gs.active_piece.rot_centre.y - updated_position.y,
     }
 
+    // rotation centre should not be displaced by rotation
+    assert(gs.active_piece_position.x + gs.active_piece.rot_centre.x == updated_position.x + updated_piece.rot_centre.x)
+    assert(gs.active_piece_position.y + gs.active_piece.rot_centre.y == updated_position.y + updated_piece.rot_centre.y)
+
     // TODO - collision detection
     gs.active_piece = updated_piece
     gs.active_piece_position = updated_position
 }
 
 get_clockwise_rotated_filled_array :: proc(
-    input: [PIECE_WIDTH * PIECE_HEIGHT]bool,
+    piece: Piece,
 ) -> (
     output: [PIECE_WIDTH * PIECE_HEIGHT]bool,
 ) {
-    assert(PIECE_WIDTH == PIECE_HEIGHT)
-    d := PIECE_WIDTH
-    for val, idx in input {
-        write_col_idx := idx / d
-        write_row_idx := d - 1 - (idx % d)
-        output[write_col_idx + write_row_idx * d] = val
+    // assumes zero initialised output == empty
+    for j in 0..<piece.bounding_dim.h {
+	write_col_idx := j
+	for i in 0..<piece.bounding_dim.w {
+	    val := piece.filled[i + j * PIECE_WIDTH]
+	    write_row_idx := piece.bounding_dim.w - 1 - i
+	    output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
+	}
     }
     return
 }
 
 get_anticlockwise_rotated_filled_array :: proc(
-    input: [PIECE_WIDTH * PIECE_HEIGHT]bool,
+    piece: Piece,
 ) -> (
     output: [PIECE_WIDTH * PIECE_HEIGHT]bool,
 ) {
-    assert(PIECE_WIDTH == PIECE_HEIGHT)
-    d := PIECE_WIDTH
-    for val, idx in input {
-        write_col_idx := d - 1 - (idx / d)
-        write_row_idx := idx % d
-        output[write_col_idx + write_row_idx * d] = val
+    // assumes zero initialised output == empty
+    for j in 0..<piece.bounding_dim.h {
+	write_col_idx := piece.bounding_dim.h - 1 - j
+	for i in 0..<piece.bounding_dim.w {
+	    val := piece.filled[i + j * PIECE_WIDTH]
+	    write_row_idx := i
+	    output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
+	}
     }
     return
 }
