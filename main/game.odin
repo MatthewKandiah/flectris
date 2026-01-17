@@ -282,7 +282,25 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     assert(gs.active_piece_position.x + gs.active_piece.rot_centre.x == updated_position.x + updated_piece.rot_centre.x)
     assert(gs.active_piece_position.y + gs.active_piece.rot_centre.y == updated_position.y + updated_piece.rot_centre.y)
 
-    // TODO - collision detection
+    // check you stay in grid
+    if updated_position.x < 0 {updated_position.x = 0}
+    if updated_position.x + updated_piece.bounding_dim.w >
+       GRID_WIDTH {updated_position.x = GRID_WIDTH - updated_piece.bounding_dim.w}
+    if updated_position.y < 0 {
+        updated_position.y = 0
+    }
+    // check you don't overlap existing pieces
+    for val, idx in updated_piece.filled {
+        if !val {continue}
+        x := updated_position.x + (cast(i32)idx % PIECE_WIDTH)
+        y := updated_position.y + (cast(i32)idx / PIECE_WIDTH)
+        if y >= GRID_HEIGHT {continue}
+
+        if gs.grid[y * GRID_WIDTH + x] == true {
+            return // don't update
+        }
+    }
+    
     gs.active_piece = updated_piece
     gs.active_piece_position = updated_position
 }
