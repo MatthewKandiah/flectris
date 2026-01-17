@@ -43,6 +43,7 @@ GridDim :: struct {
 Piece :: struct {
     filled:       [PIECE_WIDTH * PIECE_HEIGHT]bool,
     bounding_dim: GridDim,
+    rot_centre:   GridPos,
 }
 
 piece :: Piece {
@@ -50,16 +51,16 @@ piece :: Piece {
         true,
         true,
         true,
+        false,
+        false, //
+        true,
+        true,
+        true,
         true,
         true, //
         true,
         true,
-        true,
-        true,
-        true, //
-        true,
-        true,
-        true,
+        false,
         true,
         true, //
         false,
@@ -199,9 +200,9 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                     } else if (key_event.type == .Press && key_event.char == .Up) {
                         update_active_piece_position(game_state, 0, 1)
                     } else if (key_event.type == .Press && key_event.char == .S) {
-                        rotate_active_piece(game_state, .CLOCKWISE)
-                    } else if (key_event.type == .Press && key_event.char == .T) {
                         rotate_active_piece(game_state, .ANTICLOCKWISE)
+                    } else if (key_event.type == .Press && key_event.char == .T) {
+                        rotate_active_piece(game_state, .CLOCKWISE)
                     }
                 }
             case .Mouse:
@@ -242,7 +243,7 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     updated_piece := Piece {
         bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
     }
-
+    // TODO - fix bug: rotations can leave bounding box displaced from bottom left if not 5x5
     switch dir {
     case .CLOCKWISE:
         {
@@ -254,9 +255,31 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
         }
     }
 
-    // TODO - update position in grid
+    updated_position: GridPos
+    switch dir {
+    case .CLOCKWISE:
+        {
+            updated_position = GridPos {
+                x = gs.active_piece_position.x + gs.active_piece.rot_centre.x - gs.active_piece.rot_centre.y,
+                y = gs.active_piece_position.y + gs.active_piece.rot_centre.x + gs.active_piece.rot_centre.y - gs.active_piece.bounding_dim.w,
+            }
+        }
+    case .ANTICLOCKWISE:
+        {
+            updated_position = GridPos {
+                x = gs.active_piece_position.x + gs.active_piece.rot_centre.x + gs.active_piece.rot_centre.y - gs.active_piece.bounding_dim.h,
+                y = gs.active_piece_position.y + gs.active_piece.rot_centre.y - gs.active_piece.rot_centre.x,
+            }
+        }
+    }
+    updated_piece.rot_centre = GridPos {
+        x = gs.active_piece_position.x + gs.active_piece.rot_centre.x - updated_position.x,
+        y = gs.active_piece_position.y + gs.active_piece.rot_centre.y - updated_position.y,
+    }
+
     // TODO - collision detection
     gs.active_piece = updated_piece
+    gs.active_piece_position = updated_position
 }
 
 get_clockwise_rotated_filled_array :: proc(
