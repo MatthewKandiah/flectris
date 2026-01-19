@@ -21,6 +21,7 @@ generate_main_menu_entities :: proc() {
 
 }
 
+LINES_PER_LEVEL :: 20
 MAX_PIECES :: 8
 PIECE_BUFFER := [MAX_PIECES]Piece{}
 PIECE_COUNT := 0
@@ -35,6 +36,7 @@ GameState :: struct {
     ticks_until_drop:      int,
     ticks_per_drop:        int,
     score:                 int,
+    level_lines_cleared:   int,
 }
 
 GridPos :: struct {
@@ -46,7 +48,7 @@ GridDim :: struct {
     w: i32,
     h: i32,
 }
-
+ 
 Piece :: struct {
     filled:       [PIECE_WIDTH * PIECE_HEIGHT]bool,
     bounding_dim: GridDim,
@@ -61,12 +63,12 @@ piece2 :: Piece {
         false,
         false, //
         true,
-        false,
+        true,
         false,
         false,
         false, //
         true,
-        false,
+        true,
         false,
         false,
         false, //
@@ -92,13 +94,13 @@ piece1 :: Piece {
         true,
         true,
         true, //
-        false,
-        false,
+        true,
+        true,
         true,
         true,
         true, //
-        false,
-        false,
+        true,
+        true,
         true,
         true,
         false, //
@@ -160,6 +162,7 @@ initial_game_state :: GameState {
     piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}},
     piece_count = 3,
     score = 0,
+    level_lines_cleared = 0,
 }
 
 init_game :: proc() -> Game {
@@ -517,6 +520,14 @@ game_update :: proc(game: ^Game) {
             }
 
             update_score(game_state, filled_line_count)
+
+	    // check for level up
+	    game_state.level_lines_cleared += filled_line_count
+	    if game_state.level_lines_cleared >= LINES_PER_LEVEL {
+		game_state.level_lines_cleared = 0
+		game_state.ticks_per_drop = max(1, game_state.ticks_per_drop - 10)
+		game_state.ticks_until_drop = game_state.ticks_per_drop
+	    }
         }
     }
 }
