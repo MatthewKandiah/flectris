@@ -1,8 +1,8 @@
 package main
 
 import "core:fmt"
-import "vendor:glfw"
 import "core:math/rand"
+import "vendor:glfw"
 
 Game :: struct {
     screen: Screen,
@@ -34,6 +34,7 @@ GameState :: struct {
     has_active_piece:      bool,
     ticks_until_drop:      int,
     ticks_per_drop:        int,
+    score:                 int,
 }
 
 GridPos :: struct {
@@ -118,18 +119,18 @@ piece1 :: Piece {
 
 piece3 :: Piece {
     filled = {
-        false,
-        false,
+        true,
+        true,
         true,
         false,
         false, //
-        false,
         true,
-        false,
+        true,
+        true,
         false,
         false, //
         true,
-        false,
+        true,
         true,
         false,
         false, //
@@ -158,6 +159,7 @@ initial_game_state :: GameState {
     has_lost = false,
     piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}},
     piece_count = 3,
+    score = 0,
 }
 
 init_game :: proc() -> Game {
@@ -513,7 +515,27 @@ game_update :: proc(game: ^Game) {
                     game_state.grid[row_idx * GRID_WIDTH + col_idx] = false
                 }
             }
+
+            update_score(game_state, filled_line_count)
         }
+    }
+}
+
+update_score :: proc(gs: ^GameState, filled_line_count: int) {
+    switch filled_line_count {
+    case min(int)..=0: fallthrough
+    case 6..=max(int):
+	return
+    case 1:
+        gs.score += 1
+    case 2:
+        gs.score += 2
+    case 3:
+        gs.score += 5
+    case 4:
+        gs.score += 20
+    case 5:
+        gs.score += 100
     }
 }
 
