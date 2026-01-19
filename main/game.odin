@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "vendor:glfw"
+import "core:math/rand"
 
 Game :: struct {
     screen: Screen,
@@ -82,6 +83,7 @@ piece2 :: Piece {
     bounding_dim = {w = 2, h = 3},
     rot_centre = {x = 0, y = 0},
 }
+
 piece1 :: Piece {
     filled = {
         true,
@@ -456,9 +458,6 @@ deactivate_piece :: proc(gs: ^GameState) {
     }
 }
 
-// TODO - replace increment with RNG
-cnt := 0
-
 game_update :: proc(game: ^Game) {
     switch game.screen {
     case .MAIN_MENU:
@@ -469,9 +468,7 @@ game_update :: proc(game: ^Game) {
 
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
-                game_state.active_piece = game_state.piece_buffer[cnt]
-		cnt += 1
-		cnt %= game_state.piece_count
+                game_state.active_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,
