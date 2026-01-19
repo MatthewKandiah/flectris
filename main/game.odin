@@ -20,9 +20,14 @@ generate_main_menu_entities :: proc() {
 
 }
 
+MAX_PIECES :: 8
+PIECE_BUFFER := [MAX_PIECES]Piece{}
+PIECE_COUNT := 0
 GameState :: struct {
     has_lost:              bool,
     grid:                  [GRID_WIDTH * GRID_HEIGHT]bool,
+    piece_buffer:          [MAX_PIECES]Piece,
+    piece_count:           int,
     active_piece:          Piece,
     active_piece_position: GridPos,
     has_active_piece:      bool,
@@ -46,7 +51,38 @@ Piece :: struct {
     rot_centre:   GridPos,
 }
 
-piece :: Piece {
+piece2 :: Piece {
+    filled = {
+        true,
+        true,
+        false,
+        false,
+        false, //
+        true,
+        false,
+        false,
+        false,
+        false, //
+        true,
+        false,
+        false,
+        false,
+        false, //
+        false,
+        false,
+        false,
+        false,
+        false, //
+        false,
+        false,
+        false,
+        false,
+        false, //
+    },
+    bounding_dim = {w = 2, h = 3},
+    rot_centre = {x = 0, y = 0},
+}
+piece1 :: Piece {
     filled = {
         true,
         true,
@@ -78,14 +114,48 @@ piece :: Piece {
     rot_centre = {x = 1, y = 2},
 }
 
+piece3 :: Piece {
+    filled = {
+        false,
+        false,
+        true,
+        false,
+        false, //
+        false,
+        true,
+        false,
+        false,
+        false, //
+        true,
+        false,
+        true,
+        false,
+        false, //
+        false,
+        false,
+        false,
+        false,
+        false, //
+        false,
+        false,
+        false,
+        false,
+        false, //
+    },
+    bounding_dim = {w = 3, h = 3},
+    rot_centre = {x = 4, y = 1},
+}
+
 initial_game_state :: GameState {
     grid = {},
-    active_piece = piece,
+    active_piece = {},
     active_piece_position = {x = 3, y = 10},
-    has_active_piece = true,
+    has_active_piece = false,
     ticks_per_drop = 60,
     ticks_until_drop = 60,
     has_lost = false,
+    piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}},
+    piece_count = 3,
 }
 
 init_game :: proc() -> Game {
@@ -279,8 +349,12 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     }
 
     // rotation centre should not be displaced by rotation
-    assert(gs.active_piece_position.x + gs.active_piece.rot_centre.x == updated_position.x + updated_piece.rot_centre.x)
-    assert(gs.active_piece_position.y + gs.active_piece.rot_centre.y == updated_position.y + updated_piece.rot_centre.y)
+    assert(
+        gs.active_piece_position.x + gs.active_piece.rot_centre.x == updated_position.x + updated_piece.rot_centre.x,
+    )
+    assert(
+        gs.active_piece_position.y + gs.active_piece.rot_centre.y == updated_position.y + updated_piece.rot_centre.y,
+    )
 
     // check you stay in grid
     if updated_position.x < 0 {updated_position.x = 0}
@@ -300,41 +374,33 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
             return // don't update
         }
     }
-    
+
     gs.active_piece = updated_piece
     gs.active_piece_position = updated_position
 }
 
-get_clockwise_rotated_filled_array :: proc(
-    piece: Piece,
-) -> (
-    output: [PIECE_WIDTH * PIECE_HEIGHT]bool,
-) {
+get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]bool) {
     // assumes zero initialised output == empty
-    for j in 0..<piece.bounding_dim.h {
-	write_col_idx := j
-	for i in 0..<piece.bounding_dim.w {
-	    val := piece.filled[i + j * PIECE_WIDTH]
-	    write_row_idx := piece.bounding_dim.w - 1 - i
-	    output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
-	}
+    for j in 0 ..< piece.bounding_dim.h {
+        write_col_idx := j
+        for i in 0 ..< piece.bounding_dim.w {
+            val := piece.filled[i + j * PIECE_WIDTH]
+            write_row_idx := piece.bounding_dim.w - 1 - i
+            output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
+        }
     }
     return
 }
 
-get_anticlockwise_rotated_filled_array :: proc(
-    piece: Piece,
-) -> (
-    output: [PIECE_WIDTH * PIECE_HEIGHT]bool,
-) {
+get_anticlockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]bool) {
     // assumes zero initialised output == empty
-    for j in 0..<piece.bounding_dim.h {
-	write_col_idx := piece.bounding_dim.h - 1 - j
-	for i in 0..<piece.bounding_dim.w {
-	    val := piece.filled[i + j * PIECE_WIDTH]
-	    write_row_idx := i
-	    output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
-	}
+    for j in 0 ..< piece.bounding_dim.h {
+        write_col_idx := piece.bounding_dim.h - 1 - j
+        for i in 0 ..< piece.bounding_dim.w {
+            val := piece.filled[i + j * PIECE_WIDTH]
+            write_row_idx := i
+            output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
+        }
     }
     return
 }
@@ -390,6 +456,9 @@ deactivate_piece :: proc(gs: ^GameState) {
     }
 }
 
+// TODO - replace increment with RNG
+cnt := 0
+
 game_update :: proc(game: ^Game) {
     switch game.screen {
     case .MAIN_MENU:
@@ -400,7 +469,9 @@ game_update :: proc(game: ^Game) {
 
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
-                game_state.active_piece = piece
+                game_state.active_piece = game_state.piece_buffer[cnt]
+		cnt += 1
+		cnt %= game_state.piece_count
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,
