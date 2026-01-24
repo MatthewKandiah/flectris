@@ -48,7 +48,7 @@ GridDim :: struct {
     w: i32,
     h: i32,
 }
- 
+
 Piece :: struct {
     filled:       [PIECE_WIDTH * PIECE_HEIGHT]bool,
     bounding_dim: GridDim,
@@ -176,14 +176,43 @@ game_populate_entities :: proc(game: Game) {
         {
             game_state := game.state.(GameState)
 
-            grid_pos := Pos {
-                x = 50,
-                y = 50,
+            panel_dim := Dim {
+                w = 480,
+                h = cast(f32)(gc.surface_extent.height),
             }
-            grid_dim := Dim {
-                w = 200,
-                h = 400,
+            panel_pos := Pos {
+                x = cast(f32)(gc.surface_extent.width) - panel_dim.w,
+                y = 0,
             }
+
+            entity_push(game_panel_entity(panel_pos, panel_dim))
+
+            // TODO - add score to right panel
+
+            // TODO - add next piece to right panel
+
+            grid_available_space := Dim {
+                w = cast(f32)gc.surface_extent.width - panel_dim.w,
+                h = cast(f32)gc.surface_extent.height,
+            }
+            grid_w_over_h := cast(f32)GRID_WIDTH / cast(f32)GRID_HEIGHT
+            grid_available_space_w_over_h := grid_available_space.w / grid_available_space.h
+	    
+            grid_pos: Pos
+            grid_dim: Dim
+	    if (grid_w_over_h > grid_available_space_w_over_h) {
+		// grid fills available width
+		height := grid_available_space.w / grid_w_over_h
+		grid_dim = {w = grid_available_space.w, h = height}
+		unfilled_height := grid_available_space.h - height
+		grid_pos = {x = 0, y = unfilled_height / 2}
+	    } else {
+		// grid fills available height
+		width := grid_available_space.h * grid_w_over_h
+		grid_dim = {w = width, h = grid_available_space.h}
+		unfilled_width := grid_available_space.w - width
+		grid_pos = {x = unfilled_width / 2, y = 0}
+	    }
             entity_push(
                 grid_entity(
                     grid_pos,
@@ -277,7 +306,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                         update_active_piece_position(game_state, 0, -1)
                     } else if (key_event.type == .Press && key_event.char == .Up) {
                         for !update_active_piece_position(game_state, 0, -1) {}
-			deactivate_piece(game_state)
+                        deactivate_piece(game_state)
                     } else if (key_event.type == .Press && key_event.char == .S) {
                         rotate_active_piece(game_state, .ANTICLOCKWISE)
                     } else if (key_event.type == .Press && key_event.char == .T) {
@@ -522,22 +551,23 @@ game_update :: proc(game: ^Game) {
 
             update_score(game_state, filled_line_count)
 
-	    // check for level up
-	    game_state.level_lines_cleared += filled_line_count
-	    if game_state.level_lines_cleared >= LINES_PER_LEVEL {
-		game_state.level_lines_cleared = 0
-		game_state.ticks_per_drop = max(1, game_state.ticks_per_drop - 10)
-		game_state.ticks_until_drop = game_state.ticks_per_drop
-	    }
+            // check for level up
+            game_state.level_lines_cleared += filled_line_count
+            if game_state.level_lines_cleared >= LINES_PER_LEVEL {
+                game_state.level_lines_cleared = 0
+                game_state.ticks_per_drop = max(1, game_state.ticks_per_drop - 10)
+                game_state.ticks_until_drop = game_state.ticks_per_drop
+            }
         }
     }
 }
 
 update_score :: proc(gs: ^GameState, filled_line_count: int) {
     switch filled_line_count {
-    case min(int)..=0: fallthrough
-    case 6..=max(int):
-	return
+    case min(int) ..= 0:
+        fallthrough
+    case 6 ..= max(int):
+        return
     case 1:
         gs.score += 1
     case 2:

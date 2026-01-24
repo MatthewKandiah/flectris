@@ -23,11 +23,13 @@ Entity :: struct {
 EntityType :: enum {
     Button,
     Grid,
+    GamePanel,
 }
 
 EntityData :: union {
     ButtonEntityData,
     GridEntityData,
+    GamePanelEntityData,
 }
 
 ButtonEntityData :: struct {
@@ -37,6 +39,9 @@ ButtonEntityData :: struct {
 
 GridEntityData :: struct {
     cells: [GRID_WIDTH * GRID_HEIGHT]bool,
+}
+
+GamePanelEntityData :: struct {
 }
 
 entity_push :: proc(entity: Entity) {
@@ -78,6 +83,10 @@ grid_entity :: proc(
         }
     }
     return Entity{pos = pos, dim = dim, data = data, type = .Grid}
+}
+
+game_panel_entity :: proc(pos: Pos, dim: Dim) -> Entity {
+    return Entity{pos = pos, dim = dim, type = .GamePanel}
 }
 
 is_hovered :: proc(pos: Pos, dim: Dim) -> bool {

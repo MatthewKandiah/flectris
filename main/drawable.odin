@@ -7,6 +7,7 @@ import "vendor:vulkan"
 BACKGROUND_Z :: 0
 GRID_BACKGROUND_Z :: 0.1
 GRID_CELL_Z :: 0.2
+GAME_PANEL_Z :: 0.2
 UI_TEXT_BACKGROUND_Z :: 0.8
 UI_TEXT_Z :: 0.9
 
@@ -53,6 +54,11 @@ GREY :: Colour {
     g = 0.3,
     b = 0.3,
 }
+DARK_GREY :: Colour {
+    r = 0.1,
+    g = 0.1,
+    b = 0.1,
+}
 
 Pos :: struct {
     x, y: f32,
@@ -83,6 +89,8 @@ draw_entity :: proc(entity: Entity) {
         draw_button(entity)
     case .Grid:
         draw_grid(entity)
+    case .GamePanel:
+        draw_game_panel(entity)
     }
 }
 
@@ -111,8 +119,12 @@ draw_grid :: proc(entity: Entity) {
             x = entity.pos.x + cast(f32)col_idx * cell_dim.w,
             y = entity.pos.y + cast(f32)row_idx * cell_dim.h,
         }
-	draw_rect(filled_colour if filled else empty_colour, cell_pos, cell_dim, GRID_CELL_Z)
+        draw_rect(filled_colour if filled else empty_colour, cell_pos, cell_dim, GRID_CELL_Z)
     }
+}
+
+draw_game_panel :: proc(entity: Entity) {
+    draw_rect(DARK_GREY, entity.pos, entity.dim, GAME_PANEL_Z)
 }
 
 draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
