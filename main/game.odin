@@ -31,6 +31,7 @@ GameState :: struct {
     piece_buffer:          [MAX_PIECES]Piece,
     piece_count:           int,
     active_piece:          Piece,
+    next_piece:            Piece,
     active_piece_position: GridPos,
     has_active_piece:      bool,
     ticks_until_drop:      int,
@@ -154,6 +155,7 @@ piece3 :: Piece {
 initial_game_state :: GameState {
     grid = {},
     active_piece = {},
+    next_piece = {},
     active_piece_position = {x = 3, y = 10},
     has_active_piece = false,
     ticks_per_drop = 60,
@@ -195,22 +197,34 @@ game_populate_entities :: proc(game: Game) {
             }
             grid_w_over_h := cast(f32)GRID_WIDTH / cast(f32)GRID_HEIGHT
             grid_available_space_w_over_h := grid_available_space.w / grid_available_space.h
-	    
+
             grid_pos: Pos
             grid_dim: Dim
-	    if (grid_w_over_h > grid_available_space_w_over_h) {
-		// grid fills available width
-		height := grid_available_space.w / grid_w_over_h
-		grid_dim = {w = grid_available_space.w, h = height}
-		unfilled_height := grid_available_space.h - height
-		grid_pos = {x = 0, y = unfilled_height / 2}
-	    } else {
-		// grid fills available height
-		width := grid_available_space.h * grid_w_over_h
-		grid_dim = {w = width, h = grid_available_space.h}
-		unfilled_width := grid_available_space.w - width
-		grid_pos = {x = unfilled_width / 2, y = 0}
-	    }
+            if (grid_w_over_h > grid_available_space_w_over_h) {
+                // grid fills available width
+                height := grid_available_space.w / grid_w_over_h
+                grid_dim = {
+                    w = grid_available_space.w,
+                    h = height,
+                }
+                unfilled_height := grid_available_space.h - height
+                grid_pos = {
+                    x = 0,
+                    y = unfilled_height / 2,
+                }
+            } else {
+                // grid fills available height
+                width := grid_available_space.h * grid_w_over_h
+                grid_dim = {
+                    w = width,
+                    h = grid_available_space.h,
+                }
+                unfilled_width := grid_available_space.w - width
+                grid_pos = {
+                    x = unfilled_width / 2,
+                    y = 0,
+                }
+            }
             entity_push(
                 grid_entity(
                     grid_pos,
@@ -334,7 +348,9 @@ Screen :: enum {
 
 start_game_on_click :: proc(game: ^Game) {
     game.screen = .GAME
-    game.state = initial_game_state
+    game_state := initial_game_state
+    game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
+    game.state = game_state
 }
 
 exit_on_click :: proc(_: ^Game) {
@@ -501,7 +517,8 @@ game_update :: proc(game: ^Game) {
 
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
-                game_state.active_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
+		game_state.active_piece = game_state.next_piece
+                game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,
