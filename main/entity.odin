@@ -42,6 +42,7 @@ GridEntityData :: struct {
 }
 
 GamePanelEntityData :: struct {
+    score: int
 }
 
 entity_push :: proc(entity: Entity) {
@@ -85,8 +86,11 @@ grid_entity :: proc(
     return Entity{pos = pos, dim = dim, data = data, type = .Grid}
 }
 
-game_panel_entity :: proc(pos: Pos, dim: Dim) -> Entity {
-    return Entity{pos = pos, dim = dim, type = .GamePanel}
+game_panel_entity :: proc(pos: Pos, dim: Dim, score: int) -> Entity {
+    data := GamePanelEntityData {
+	score = score
+    }
+    return Entity{pos = pos, dim = dim, type = .GamePanel, data = data}
 }
 
 is_hovered :: proc(pos: Pos, dim: Dim) -> bool {

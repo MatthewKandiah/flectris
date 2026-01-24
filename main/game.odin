@@ -185,9 +185,7 @@ game_populate_entities :: proc(game: Game) {
                 y = 0,
             }
 
-            entity_push(game_panel_entity(panel_pos, panel_dim))
-
-            // TODO - add score to right panel
+            entity_push(game_panel_entity(panel_pos, panel_dim, game_state.score))
 
             // TODO - add next piece to right panel
 

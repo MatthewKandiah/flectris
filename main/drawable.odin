@@ -102,9 +102,6 @@ draw_button :: proc(entity: Entity) {
 }
 
 draw_grid :: proc(entity: Entity) {
-    // draw background
-    draw_rect(GREEN, entity.pos, entity.dim, GRID_BACKGROUND_Z)
-    // draw filled cells
     data := entity.data.(GridEntityData)
     cell_dim := Dim {
         w = entity.dim.w / GRID_WIDTH,
@@ -124,7 +121,43 @@ draw_grid :: proc(entity: Entity) {
 }
 
 draw_game_panel :: proc(entity: Entity) {
+    panel_top_bot_margin :: 10
+    panel_left_right_margin :: 5
+    score_height := entity.dim.w / 5
+    data := entity.data.(GamePanelEntityData)
     draw_rect(DARK_GREY, entity.pos, entity.dim, GAME_PANEL_Z)
+    draw_number(
+        data.score,
+        7,
+        Pos {
+            x = entity.pos.x + panel_left_right_margin,
+            y = entity.pos.y + entity.dim.h - panel_top_bot_margin - score_height,
+        },
+        Dim{w = entity.dim.w - 2 * panel_left_right_margin, h = score_height},
+        UI_TEXT_Z,
+    )
+}
+
+draw_number :: proc(n: int, min_drawn_digits: int, pos: Pos, dim: Dim, z: f32) {
+    n := n
+    char_buffer_size :: 32
+    assert(min_drawn_digits <= char_buffer_size)
+    char_buffer := [char_buffer_size]u8{}
+    for &c in char_buffer {c = '0'}
+    digit_count := 0
+
+    for {
+        digit := n % 10
+        n /= 10
+        char_buffer[char_buffer_size - 1 - digit_count] = cast(u8)digit + '0'
+        digit_count += 1
+
+        if n <= 0 {break}
+        if digit_count >= char_buffer_size {break}
+    }
+
+    drawn_digit_count := max(digit_count, min_drawn_digits)
+    draw_string(char_buffer[char_buffer_size - drawn_digit_count:], pos, dim, z)
 }
 
 draw_string :: proc(str: []u8, pos: Pos, dim: Dim, z: f32) {
