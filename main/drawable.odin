@@ -103,39 +103,54 @@ draw_button :: proc(entity: Entity) {
 
 draw_grid :: proc(entity: Entity) {
     data := entity.data.(GridEntityData)
+    draw_grid_cells(entity.pos, entity.dim, GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, data.cells[:], GRID_CELL_Z)
+}
+
+draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cells: []bool, z: f32) {
     cell_dim := Dim {
-        w = entity.dim.w / GRID_WIDTH,
-        h = entity.dim.h / GRID_HEIGHT,
+        w = screen_dim.w / cast(f32)grid_dim.w,
+        h = screen_dim.h / cast(f32)grid_dim.h,
     }
     filled_colour := RED
     empty_colour := BLUE
-    for filled, idx in data.cells {
-        col_idx := idx % GRID_WIDTH
-        row_idx := idx / GRID_WIDTH
-        cell_pos := Pos {
-            x = entity.pos.x + cast(f32)col_idx * cell_dim.w,
-            y = entity.pos.y + cast(f32)row_idx * cell_dim.h,
-        }
-        draw_rect(filled_colour if filled else empty_colour, cell_pos, cell_dim, GRID_CELL_Z)
+    for filled, idx in cells {
+        col_idx := idx % cast(int)grid_dim.w
+        row_idx := idx / cast(int)grid_dim.w
+	cell_pos := Pos {
+	    x = screen_pos.x + cast(f32)col_idx * cell_dim.w,
+	    y = screen_pos.y + cast(f32)row_idx * cell_dim.h,
+	}
+	draw_rect(filled_colour if filled else empty_colour, cell_pos, cell_dim, z)
     }
 }
 
 draw_game_panel :: proc(entity: Entity) {
+    data := entity.data.(GamePanelEntityData)
     panel_top_bot_margin :: 10
     panel_left_right_margin :: 5
-    score_height := entity.dim.w / 5
-    data := entity.data.(GamePanelEntityData)
+
+    score_dim := Dim {
+        w = entity.dim.w - 2 * panel_left_right_margin,
+        h = entity.dim.w / 5,
+    }
+    score_pos := Pos {
+        x = entity.pos.x + panel_left_right_margin,
+        y = entity.pos.y + entity.dim.h - panel_top_bot_margin - score_dim.h,
+    }
+
+    next_piece_size := entity.dim.w - 2 * panel_left_right_margin
+    next_piece_dim := Dim {
+        w = next_piece_size,
+        h = next_piece_size,
+    }
+    next_piece_pos := Pos {
+        x = entity.pos.x + panel_left_right_margin,
+        y = score_pos.y - panel_top_bot_margin - next_piece_dim.h,
+    }
+
     draw_rect(DARK_GREY, entity.pos, entity.dim, GAME_PANEL_Z)
-    draw_number(
-        data.score,
-        7,
-        Pos {
-            x = entity.pos.x + panel_left_right_margin,
-            y = entity.pos.y + entity.dim.h - panel_top_bot_margin - score_height,
-        },
-        Dim{w = entity.dim.w - 2 * panel_left_right_margin, h = score_height},
-        UI_TEXT_Z,
-    )
+    draw_number(data.score, 7, score_pos, score_dim, UI_TEXT_Z)
+    draw_grid_cells(next_piece_pos, next_piece_dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.next_piece.filled[:], UI_TEXT_Z)
 }
 
 draw_number :: proc(n: int, min_drawn_digits: int, pos: Pos, dim: Dim, z: f32) {

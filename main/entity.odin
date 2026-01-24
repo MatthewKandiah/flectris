@@ -42,7 +42,8 @@ GridEntityData :: struct {
 }
 
 GamePanelEntityData :: struct {
-    score: int
+    score: int,
+    next_piece: Piece,
 }
 
 entity_push :: proc(entity: Entity) {
@@ -86,9 +87,10 @@ grid_entity :: proc(
     return Entity{pos = pos, dim = dim, data = data, type = .Grid}
 }
 
-game_panel_entity :: proc(pos: Pos, dim: Dim, score: int) -> Entity {
+game_panel_entity :: proc(pos: Pos, dim: Dim, score: int, next_piece: Piece) -> Entity {
     data := GamePanelEntityData {
-	score = score
+	score = score,
+	next_piece = next_piece,
     }
     return Entity{pos = pos, dim = dim, type = .GamePanel, data = data}
 }
