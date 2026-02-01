@@ -13,6 +13,8 @@ VERTEX_SHADER_PATH :: "build/vert.spv"
 FRAGMENT_SHADER_PATH :: "build/frag.spv"
 FONT_TEXTURE_PATH :: "assets/font.png"
 SPRITE_TEXTURE_PATH :: "assets/spritesheet.png"
+FONT_TEXTURE_INDEX :: 0
+SPRITE_TEXTURE_INDEX :: 1
 
 VERTEX_BUFFER_SIZE :: 10_000
 VERTEX_BUFFER := [VERTEX_BUFFER_SIZE]Vertex{}
@@ -49,10 +51,11 @@ Renderer :: struct {
     font_texture_image:          vulkan.Image,
     font_texture_image_memory:   vulkan.DeviceMemory,
     font_texture_image_view:     vulkan.ImageView,
+    font_texture_sampler:        vulkan.Sampler,
     sprite_texture_image:        vulkan.Image,
     sprite_texture_image_memory: vulkan.DeviceMemory,
     sprite_texture_image_view:   vulkan.ImageView,
-    texture_sampler:             vulkan.Sampler,
+    sprite_texture_sampler:      vulkan.Sampler,
     descriptor_pool:             vulkan.DescriptorPool,
     descriptor_set:              vulkan.DescriptorSet,
     descriptor_set_layout:       vulkan.DescriptorSetLayout,
@@ -86,16 +89,19 @@ draw_drawables :: proc() {
             {pos.x, pos.y, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x, drawable.texture_data.base.y},
+	    drawable.texture_data.tex_idx,
         }
         VERTEX_BUFFER[vertex_base_idx + 1] = {
             {pos.x, pos.y - dim.h, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x, drawable.texture_data.base.y - drawable.texture_data.dim.h},
+	    drawable.texture_data.tex_idx,
         }
         VERTEX_BUFFER[vertex_base_idx + 2] = {
             {pos.x + dim.w, pos.y, drawable.z},
             {drawable.colour.r, drawable.colour.g, drawable.colour.b, alpha},
             {drawable.texture_data.base.x + drawable.texture_data.dim.w, drawable.texture_data.base.y},
+	    drawable.texture_data.tex_idx,
         }
         VERTEX_BUFFER[vertex_base_idx + 3] = {
             {pos.x + dim.w, pos.y - dim.h, drawable.z},
@@ -104,6 +110,7 @@ draw_drawables :: proc() {
                 drawable.texture_data.base.x + drawable.texture_data.dim.w,
                 drawable.texture_data.base.y - drawable.texture_data.dim.h,
             },
+	    drawable.texture_data.tex_idx,
         }
 
         INDEX_BUFFER[index_base_idx + 0] = cast(u32)(vertex_base_idx + 0)
@@ -228,7 +235,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
     {     // create descriptor pool
         descriptor_pool_size := vulkan.DescriptorPoolSize {
             type            = .COMBINED_IMAGE_SAMPLER,
-            descriptorCount = 1,
+            descriptorCount = 2,
         }
 
         create_info := vulkan.DescriptorPoolCreateInfo {
@@ -250,8 +257,8 @@ init_renderer :: proc() -> (renderer: Renderer) {
         create_texture_from_file(renderer, SPRITE_TEXTURE_PATH)
     create_depth_image_and_view(&renderer)
 
-    renderer.texture_sampler = create_sampler(renderer)
-    // TODO - sprite texture sampler
+    renderer.font_texture_sampler = create_sampler(renderer)
+    renderer.sprite_texture_sampler = create_sampler(renderer)
 
     {     // create vertex buffer
         create_info := vulkan.BufferCreateInfo {
@@ -344,10 +351,10 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // create descriptor set layout
-        texture_combined_sampler_binding := vulkan.DescriptorSetLayoutBinding {
+        texture_combined_samplers_binding := vulkan.DescriptorSetLayoutBinding {
             binding            = 0,
             descriptorType     = .COMBINED_IMAGE_SAMPLER,
-            descriptorCount    = 1,
+            descriptorCount    = 2,
             stageFlags         = {.FRAGMENT},
             pImmutableSamplers = nil,
         }
@@ -355,7 +362,7 @@ init_renderer :: proc() -> (renderer: Renderer) {
             sType        = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             flags        = {},
             bindingCount = 1,
-            pBindings    = &texture_combined_sampler_binding,
+            pBindings    = &texture_combined_samplers_binding,
         }
         res := vulkan.CreateDescriptorSetLayout(renderer.device, &create_info, nil, &renderer.descriptor_set_layout)
     }
@@ -371,19 +378,25 @@ init_renderer :: proc() -> (renderer: Renderer) {
     }
 
     {     // update descriptor set
-        descriptor_image_info := vulkan.DescriptorImageInfo {
-            sampler     = renderer.texture_sampler,
+        font_descriptor_image_info := vulkan.DescriptorImageInfo {
+            sampler     = renderer.font_texture_sampler,
             imageView   = renderer.font_texture_image_view,
             imageLayout = .SHADER_READ_ONLY_OPTIMAL,
         }
+	sprite_descriptor_image_info := vulkan.DescriptorImageInfo {
+	    sampler = renderer.sprite_texture_sampler,
+	    imageView = renderer.sprite_texture_image_view,
+	    imageLayout = .SHADER_READ_ONLY_OPTIMAL,
+	}
+	sampler_descriptor_images := []vulkan.DescriptorImageInfo{font_descriptor_image_info, sprite_descriptor_image_info}
         descriptor_write := vulkan.WriteDescriptorSet {
             sType           = .WRITE_DESCRIPTOR_SET,
             dstSet          = renderer.descriptor_set,
             dstBinding      = 0,
             dstArrayElement = 0,
-            descriptorCount = 1,
+            descriptorCount = 2,
             descriptorType  = .COMBINED_IMAGE_SAMPLER,
-            pImageInfo      = &descriptor_image_info,
+            pImageInfo      = raw_data(sampler_descriptor_images),
         }
         vulkan.UpdateDescriptorSets(renderer.device, 1, &descriptor_write, 0, nil)
     }

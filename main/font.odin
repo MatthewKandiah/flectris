@@ -6,6 +6,7 @@ get_ascii_font_texture_data :: proc(char: u8) -> TextureData {
 	return {
 	    base = {x = 8 * cast(f32)(char - 'A'), y = 16},
 	    dim = {w = 8, h = 16},
+	    tex_idx = FONT_TEXTURE_INDEX,
 	}
     }
     if (char >= '1' && char <= '9') {
@@ -13,12 +14,14 @@ get_ascii_font_texture_data :: proc(char: u8) -> TextureData {
 	return {
 	    base = {x = 8 * cast(f32)(char - '1'), y = 32},
 	    dim = {w = 8, h = 16},
+	    tex_idx = FONT_TEXTURE_INDEX,
 	}
     }
     if (char == '0') {
 	return {
 	    base = {x = 8 * 9, y = 32},
 	    dim = {w = 8, h = 16},
+	    tex_idx = FONT_TEXTURE_INDEX,
 	}
     }
     unreachable()

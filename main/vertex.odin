@@ -7,6 +7,7 @@ Vertex :: struct {
     pos:       glsl.vec3,
     colour:    glsl.vec4,
     tex_coord: glsl.vec2,
+    tex_idx:   i32,
 }
 
 vertex_input_binding_description := vulkan.VertexInputBindingDescription {
@@ -29,9 +30,15 @@ vertex_input_attribute_descriptions := []vulkan.VertexInputAttributeDescription 
         offset = cast(u32)offset_of(Vertex, colour),
     },
     vulkan.VertexInputAttributeDescription {
-	location = 2,
+        location = 2,
+        binding = 0,
+        format = .R32G32_SFLOAT,
+        offset = cast(u32)offset_of(Vertex, tex_coord),
+    },
+    vulkan.VertexInputAttributeDescription {
+	location = 3,
 	binding = 0,
-	format = .R32G32_SFLOAT,
-	offset = cast(u32)offset_of(Vertex, tex_coord),
+	format = .R32_SINT,
+	offset = cast(u32)offset_of(Vertex, tex_idx),
     }
 }

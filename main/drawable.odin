@@ -73,8 +73,9 @@ extent_to_dim :: proc(extent: vulkan.Extent2D) -> Dim {
 }
 
 TextureData :: struct {
-    base: Pos,
-    dim:  Dim,
+    base:    Pos,
+    dim:     Dim,
+    tex_idx: i32,
 }
 
 draw_entities :: proc() {
@@ -111,16 +112,33 @@ draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cel
         w = screen_dim.w / cast(f32)grid_dim.w,
         h = screen_dim.h / cast(f32)grid_dim.h,
     }
-    filled_colour := RED
-    empty_colour := BLUE
+    empty_texture_data := TextureData {
+        base = {x = 0, y = 32},
+        dim = {w = 32, h = 32},
+        tex_idx = SPRITE_TEXTURE_INDEX,
+    }
+    empty_debug_colour := BLUE
+    filled_texture_data := TextureData {
+        base = {x = 32, y = 32},
+        dim = {w = 32, h = 32},
+        tex_idx = SPRITE_TEXTURE_INDEX,
+    }
+    filled_debug_colour := RED
     for filled, idx in cells {
         col_idx := idx % cast(int)grid_dim.w
         row_idx := idx / cast(int)grid_dim.w
-	cell_pos := Pos {
-	    x = screen_pos.x + cast(f32)col_idx * cell_dim.w,
-	    y = screen_pos.y + cast(f32)row_idx * cell_dim.h,
-	}
-	draw_rect(filled_colour if filled else empty_colour, cell_pos, cell_dim, z)
+        cell_pos := Pos {
+            x = screen_pos.x + cast(f32)col_idx * cell_dim.w,
+            y = screen_pos.y + cast(f32)row_idx * cell_dim.h,
+        }
+        draw_sprite(
+            filled_texture_data if filled else empty_texture_data,
+            cell_pos,
+            cell_dim,
+            z,
+            false,
+            filled_debug_colour if filled else empty_debug_colour,
+        )
     }
 }
 
@@ -150,7 +168,13 @@ draw_game_panel :: proc(entity: Entity) {
 
     draw_rect(DARK_GREY, entity.pos, entity.dim, GAME_PANEL_Z)
     draw_number(data.score, 7, score_pos, score_dim, UI_TEXT_Z)
-    draw_grid_cells(next_piece_pos, next_piece_dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.next_piece.filled[:], UI_TEXT_Z)
+    draw_grid_cells(
+        next_piece_pos,
+        next_piece_dim,
+        GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
+        data.next_piece.filled[:],
+        UI_TEXT_Z,
+    )
 }
 
 draw_number :: proc(n: int, min_drawn_digits: int, pos: Pos, dim: Dim, z: f32) {
@@ -205,6 +229,18 @@ draw_rect :: proc(colour: Colour, pos: Pos, dim: Dim, z: f32) {
         texture_data    = {},
         override_colour = true,
         colour          = colour,
+    }
+    DRAWABLES_COUNT += 1
+}
+
+draw_sprite :: proc(texture_data: TextureData, pos: Pos, dim: Dim, z: f32, debug: bool, debugColour: Colour) {
+    DRAWABLES[DRAWABLES_COUNT] = Drawable {
+        pos             = pos,
+        z               = z,
+        dim             = dim,
+        texture_data    = texture_data,
+        override_colour = debug,
+        colour          = debugColour,
     }
     DRAWABLES_COUNT += 1
 }
