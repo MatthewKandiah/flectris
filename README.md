@@ -5,9 +5,8 @@ Tetris but you can pick your tileset.
 - Write tetris / tetris block designer
 
 ## Short term plan
-- make prettier => instead of cells being filled/unfilled, we want to be able to use different textures for them
-
-- refactor entity click handling to reduce copy-pasting
+- Update Piece so individual cells are not empty/filled, but empty/cell1/cell2/... so we can apply different texture for each cell
 - some tidying:
+  - refactor entity click handling to reduce copy-pasting
   - do we need to reorganise files?
   - do we want helper functions around our events and game state?
