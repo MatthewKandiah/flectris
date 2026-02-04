@@ -27,7 +27,7 @@ PIECE_BUFFER := [MAX_PIECES]Piece{}
 PIECE_COUNT := 0
 GameState :: struct {
     has_lost:              bool,
-    grid:                  [GRID_WIDTH * GRID_HEIGHT]bool,
+    grid:                  [GRID_WIDTH * GRID_HEIGHT]int,
     piece_buffer:          [MAX_PIECES]Piece,
     piece_count:           int,
     active_piece:          Piece,
@@ -51,38 +51,38 @@ GridDim :: struct {
 }
 
 Piece :: struct {
-    filled:       [PIECE_WIDTH * PIECE_HEIGHT]bool,
+    filled:       [PIECE_WIDTH * PIECE_HEIGHT]int,
     bounding_dim: GridDim,
     rot_centre:   GridPos,
 }
 
 piece2 :: Piece {
     filled = {
-        true,
-        true,
-        false,
-        false,
-        false, //
-        true,
-        true,
-        false,
-        false,
-        false, //
-        true,
-        true,
-        false,
-        false,
-        false, //
-        false,
-        false,
-        false,
-        false,
-        false, //
-        false,
-        false,
-        false,
-        false,
-        false, //
+        2,
+        2,
+        0,
+        0,
+        0, //
+        2,
+        2,
+        0,
+        0,
+        0, //
+        2,
+        2,
+        0,
+        0,
+        0, //
+        0,
+        0,
+        0,
+        0,
+        0, //
+        0,
+        0,
+        0,
+        0,
+        0, //
     },
     bounding_dim = {w = 2, h = 3},
     rot_centre = {x = 0, y = 0},
@@ -90,31 +90,31 @@ piece2 :: Piece {
 
 piece1 :: Piece {
     filled = {
-        true,
-        true,
-        true,
-        true,
-        true, //
-        true,
-        true,
-        true,
-        true,
-        true, //
-        true,
-        true,
-        true,
-        true,
-        false, //
-        false,
-        false,
-        false,
-        false,
-        false, //
-        false,
-        false,
-        false,
-        false,
-        false, //
+        1,
+        1,
+        1,
+        1,
+        1, //
+        1,
+        1,
+        1,
+        1,
+        1, //
+        1,
+        1,
+        1,
+        1,
+        0, //
+        0,
+        0,
+        0,
+        0,
+        0, //
+        0,
+        0,
+        0,
+        0,
+        0, //
     },
     bounding_dim = {w = 5, h = 3},
     rot_centre = {x = 1, y = 2},
@@ -122,31 +122,31 @@ piece1 :: Piece {
 
 piece3 :: Piece {
     filled = {
-        true,
-        true,
-        true,
-        false,
-        false, //
-        true,
-        true,
-        true,
-        false,
-        false, //
-        true,
-        true,
-        true,
-        false,
-        false, //
-        false,
-        false,
-        false,
-        false,
-        false, //
-        false,
-        false,
-        false,
-        false,
-        false, //
+        3,
+        3,
+        3,
+        0,
+        0, //
+        3,
+        3,
+        3,
+        0,
+        0, //
+        3,
+        3,
+        3,
+        0,
+        0, //
+        0,
+        0,
+        0,
+        0,
+        0, //
+        0,
+        0,
+        0,
+        0,
+        0, //
     },
     bounding_dim = {w = 3, h = 3},
     rot_centre = {x = 4, y = 1},
@@ -414,12 +414,12 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     }
     // check you don't overlap existing pieces
     for val, idx in updated_piece.filled {
-        if !val {continue}
+        if val == 0 {continue}
         x := updated_position.x + (cast(i32)idx % PIECE_WIDTH)
         y := updated_position.y + (cast(i32)idx / PIECE_WIDTH)
         if y >= GRID_HEIGHT {continue}
 
-        if gs.grid[y * GRID_WIDTH + x] == true {
+        if gs.grid[y * GRID_WIDTH + x] != 0 {
             return // don't update
         }
     }
@@ -428,7 +428,7 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     gs.active_piece_position = updated_position
 }
 
-get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]bool) {
+get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]int) {
     // assumes zero initialised output == empty
     for j in 0 ..< piece.bounding_dim.h {
         write_col_idx := j
@@ -441,7 +441,7 @@ get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDT
     return
 }
 
-get_anticlockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]bool) {
+get_anticlockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]int) {
     // assumes zero initialised output == empty
     for j in 0 ..< piece.bounding_dim.h {
         write_col_idx := piece.bounding_dim.h - 1 - j
@@ -474,12 +474,12 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
 
     // check you don't overlap existing pieces
     for val, idx in gs.active_piece.filled {
-        if !val {continue}
+        if val == 0 {continue}
         x := updated_pos.x + (cast(i32)idx % PIECE_WIDTH)
         y := updated_pos.y + (cast(i32)idx / PIECE_WIDTH)
         if y >= GRID_HEIGHT {continue}
 
-        if gs.grid[y * GRID_WIDTH + x] == true {
+        if gs.grid[y * GRID_WIDTH + x] != 0 {
             updated_pos = gs.active_piece_position
             if delta_y < 0 {
                 collided_bottom = true
@@ -494,13 +494,13 @@ update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (
 deactivate_piece :: proc(gs: ^GameState) {
     gs.has_active_piece = false
     for val, idx in gs.active_piece.filled {
-        if !val {continue}
+        if val == 0 {continue}
         x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
         y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
         if y >= GRID_HEIGHT {
             gs.has_lost = true
         } else {
-            gs.grid[y * GRID_WIDTH + x] = true
+            gs.grid[y * GRID_WIDTH + x] = val
         }
     }
 }
@@ -558,7 +558,7 @@ game_update :: proc(game: ^Game) {
             }
             for row_idx in GRID_HEIGHT - filled_line_count ..< GRID_HEIGHT {
                 for col_idx in 0 ..< GRID_WIDTH {
-                    game_state.grid[row_idx * GRID_WIDTH + col_idx] = false
+                    game_state.grid[row_idx * GRID_WIDTH + col_idx] = 0
                 }
             }
 
@@ -598,8 +598,8 @@ grid_row_is_filled :: proc(gs: ^GameState, row_idx: int) -> bool {
     assert(row_idx >= 0 || row_idx < GRID_HEIGHT, "row must be inside grid")
     grid_idx := row_idx * GRID_WIDTH
     row := gs.grid[grid_idx:grid_idx + GRID_WIDTH]
-    for filled in row {
-        if !filled {return false}
+    for val in row {
+        if val == 0 {return false}
     }
     return true
 }

@@ -107,16 +107,16 @@ draw_grid :: proc(entity: Entity) {
     draw_grid_cells(entity.pos, entity.dim, GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, data.cells[:], GRID_CELL_Z)
 }
 
-draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cells: []bool, z: f32) {
+draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cells: []int, z: f32) {
     cell_dim := Dim {
         w = screen_dim.w / cast(f32)grid_dim.w,
         h = screen_dim.h / cast(f32)grid_dim.h,
     }
-    empty_texture_data := get_cell_sprite_texture_data(2)
+    empty_texture_data := get_cell_sprite_texture_data(6)
     empty_debug_colour := BLUE
-    filled_texture_data := get_cell_sprite_texture_data(3)
+    filled_texture_data := get_cell_sprite_texture_data(7)
     filled_debug_colour := RED
-    for filled, idx in cells {
+    for value, idx in cells {
         col_idx := idx % cast(int)grid_dim.w
         row_idx := idx / cast(int)grid_dim.w
         cell_pos := Pos {
@@ -124,12 +124,12 @@ draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cel
             y = screen_pos.y + cast(f32)row_idx * cell_dim.h,
         }
         draw_sprite(
-            filled_texture_data if filled else empty_texture_data,
+            get_cell_sprite_texture_data(value),
             cell_pos,
             cell_dim,
             z,
             false,
-            filled_debug_colour if filled else empty_debug_colour,
+	    {},
         )
     }
 }
