@@ -38,11 +38,13 @@ ButtonEntityData :: struct {
 }
 
 GridEntityData :: struct {
-    cells: [GRID_WIDTH * GRID_HEIGHT]int,
+    cells:            [GRID_WIDTH * GRID_HEIGHT]int,
+    rot_centre:       GridPos,
+    has_active_piece: bool,
 }
 
 GamePanelEntityData :: struct {
-    score: int,
+    score:      int,
     next_piece: Piece,
 }
 
@@ -72,15 +74,20 @@ grid_entity :: proc(
 ) -> Entity {
     data := GridEntityData {
         cells = filled_grid,
+        has_active_piece = has_active_piece,
+        rot_centre = GridPos {
+            x = active_piece_position.x + active_piece.rot_centre.x,
+            y = active_piece_position.y + active_piece.rot_centre.y,
+        },
     }
     if has_active_piece {
         for val, idx in active_piece.filled {
-	    if val == 0 {continue}
+            if val == 0 {continue}
             grid_pos := GridPos {
                 x = active_piece_position.x + cast(i32)idx % PIECE_WIDTH,
                 y = active_piece_position.y + cast(i32)idx / PIECE_WIDTH,
             }
-	    if grid_pos.y >= GRID_HEIGHT {continue}
+            if grid_pos.y >= GRID_HEIGHT {continue}
             data.cells[GRID_WIDTH * grid_pos.y + grid_pos.x] = val
         }
     }
@@ -89,8 +96,8 @@ grid_entity :: proc(
 
 game_panel_entity :: proc(pos: Pos, dim: Dim, score: int, next_piece: Piece) -> Entity {
     data := GamePanelEntityData {
-	score = score,
-	next_piece = next_piece,
+        score      = score,
+        next_piece = next_piece,
     }
     return Entity{pos = pos, dim = dim, type = .GamePanel, data = data}
 }

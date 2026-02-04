@@ -105,6 +105,32 @@ draw_button :: proc(entity: Entity) {
 draw_grid :: proc(entity: Entity) {
     data := entity.data.(GridEntityData)
     draw_grid_cells(entity.pos, entity.dim, GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, data.cells[:], GRID_CELL_Z)
+    if data.has_active_piece {
+        draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, GridDim{w = GRID_WIDTH, h = GRID_HEIGHT})
+    }
+}
+
+draw_grid_rot_centre :: proc(screen_pos: Pos, screen_dim: Dim, rot_centre: GridPos, grid_dim: GridDim) {
+    if rot_centre.x > grid_dim.w {return}
+    if rot_centre.x < 0 {return}
+    if rot_centre.y > grid_dim.h {return}
+    if rot_centre.y < 0 {return}
+
+    cell_dim := Dim {
+        w = screen_dim.w / cast(f32)grid_dim.w,
+        h = screen_dim.h / cast(f32)grid_dim.h,
+    }
+    texture_data := get_cell_sprite_texture_data(5)
+    rot_centre_scale: f32 = 5
+    rot_centre_dim := Dim {
+        w = cell_dim.w / rot_centre_scale,
+        h = cell_dim.h / rot_centre_scale,
+    }
+    rot_centre_pos := Pos {
+        x = screen_pos.x + (cast(f32)rot_centre.x * cell_dim.w) - (rot_centre_dim.w / 2),
+        y = screen_pos.y + (cast(f32)rot_centre.y * cell_dim.h) - (rot_centre_dim.h / 2),
+    }
+    draw_sprite(texture_data, rot_centre_pos, rot_centre_dim, 1, false, {})
 }
 
 draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cells: []int, z: f32) {
@@ -123,14 +149,7 @@ draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cel
             x = screen_pos.x + cast(f32)col_idx * cell_dim.w,
             y = screen_pos.y + cast(f32)row_idx * cell_dim.h,
         }
-        draw_sprite(
-            get_cell_sprite_texture_data(value),
-            cell_pos,
-            cell_dim,
-            z,
-            false,
-	    {},
-        )
+        draw_sprite(get_cell_sprite_texture_data(value), cell_pos, cell_dim, z, false, {})
     }
 }
 
