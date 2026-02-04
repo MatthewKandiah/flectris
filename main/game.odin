@@ -9,6 +9,7 @@ Game :: struct {
     state:  union {
         MainMenuState,
         GameState,
+	EditState,
     },
 }
 
@@ -16,10 +17,9 @@ MainMenuState :: struct {}
 
 initial_main_menu_state :: MainMenuState{}
 
-generate_main_menu_entities :: proc() {
-    ENTITY_COUNT = 0
+EditState :: struct {}
 
-}
+initial_edit_state :: EditState{}
 
 LINES_PER_LEVEL :: 20
 MAX_PIECES :: 8
@@ -238,41 +238,55 @@ game_populate_entities :: proc(game: Game) {
         {
             start_str := "START"
             surface_dim := extent_to_dim(gc.surface_extent)
-            start_button_dim := Dim {
+            button_dim := Dim {
                 w = 200,
                 h = 100,
             }
             start_button_pos := Pos {
-                x = surface_dim.w / 2 - start_button_dim.w / 2,
-                y = surface_dim.h / 2 - start_button_dim.h / 2,
+                x = surface_dim.w / 2 - button_dim.w / 2,
+                y = 2*surface_dim.h / 3 - button_dim.h / 2,
             }
             exit_str := "EXIT"
-            exit_button_dim := Dim {
-                w = 200,
-                h = 100,
-            }
             exit_button_pos := Pos {
                 x = start_button_pos.x,
-                y = start_button_pos.y - 1.5 * start_button_dim.h,
+                y = start_button_pos.y - 1.5 * button_dim.h,
             }
+	    edit_str := "EDIT"
+	    edit_button_pos := Pos {
+		x = start_button_pos.x,
+		y = start_button_pos.y - 3 * button_dim.h,
+	    }
             entity_push(
                 button_entity(
                     start_button_pos,
-                    start_button_dim,
+                    button_dim,
                     transmute([]u8)start_str,
-                    is_hovered(start_button_pos, start_button_dim),
+                    is_hovered(start_button_pos, button_dim),
                     start_game_on_click,
                 ),
             )
             entity_push(
                 button_entity(
                     exit_button_pos,
-                    exit_button_dim,
+                    button_dim,
                     transmute([]u8)exit_str,
-                    is_hovered(exit_button_pos, exit_button_dim),
+                    is_hovered(exit_button_pos, button_dim),
                     exit_on_click,
                 ),
             )
+	    entity_push(
+		button_entity(
+		    edit_button_pos,
+		    button_dim,
+		    transmute([]u8)edit_str,
+		    is_hovered(edit_button_pos, button_dim),
+		    edit_on_click,
+		)
+	    )
+        }
+    case .EDIT:
+        {
+            // TODO
         }
     }
 }
@@ -298,6 +312,10 @@ game_handle_event :: proc(game: ^Game, event: Event) {
                     }
                 }
             }
+        }
+    case .EDIT:
+        {
+            // TODO
         }
     case .GAME:
         {
@@ -342,6 +360,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
 Screen :: enum {
     MAIN_MENU,
     GAME,
+    EDIT,
 }
 
 start_game_on_click :: proc(game: ^Game) {
@@ -353,6 +372,11 @@ start_game_on_click :: proc(game: ^Game) {
 
 exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
+}
+
+edit_on_click :: proc(game: ^Game) {
+    game.screen = .EDIT
+    fmt.println("EDIT")
 }
 
 Dir :: enum {
@@ -509,13 +533,15 @@ game_update :: proc(game: ^Game) {
     switch game.screen {
     case .MAIN_MENU:
         {}
+    case .EDIT:
+	{}
     case .GAME:
         {
             game_state := &game.state.(GameState)
 
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
-		game_state.active_piece = game_state.next_piece
+                game_state.active_piece = game_state.next_piece
                 game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
