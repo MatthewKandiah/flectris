@@ -112,17 +112,9 @@ draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cel
         w = screen_dim.w / cast(f32)grid_dim.w,
         h = screen_dim.h / cast(f32)grid_dim.h,
     }
-    empty_texture_data := TextureData {
-        base = {x = 0, y = 32},
-        dim = {w = 32, h = 32},
-        tex_idx = SPRITE_TEXTURE_INDEX,
-    }
+    empty_texture_data := get_cell_sprite_texture_data(2)
     empty_debug_colour := BLUE
-    filled_texture_data := TextureData {
-        base = {x = 32, y = 32},
-        dim = {w = 32, h = 32},
-        tex_idx = SPRITE_TEXTURE_INDEX,
-    }
+    filled_texture_data := get_cell_sprite_texture_data(3)
     filled_debug_colour := RED
     for filled, idx in cells {
         col_idx := idx % cast(int)grid_dim.w
