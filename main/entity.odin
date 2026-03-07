@@ -21,13 +21,15 @@ Entity :: struct {
 }
 
 EntityType :: enum {
-    Button,
+    TextButton,
+    PieceButton,
     Grid,
     GamePanel,
 }
 
 EntityData :: union {
     TextButtonEntityData,
+    PieceButtonEntityData,
     GridEntityData,
     GamePanelEntityData,
 }
@@ -35,6 +37,10 @@ EntityData :: union {
 TextButtonEntityData :: struct {
     str:     []u8,
     hovered: bool,
+}
+
+PieceButtonEntityData :: struct {
+    piece_data: PieceData,
 }
 
 GridEntityData :: struct {
@@ -58,9 +64,20 @@ text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_clic
         pos = pos,
         dim = dim,
         clickable = true,
-        type = .Button,
+        type = .TextButton,
         on_click = on_click,
         data = TextButtonEntityData{str = str, hovered = hovered},
+    }
+}
+
+piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData) -> Entity {
+    return Entity {
+        pos = pos,
+        dim = dim,
+        clickable = false,
+        on_click = nil,
+        type = .PieceButton,
+        data = PieceButtonEntityData{piece_data = piece_data},
     }
 }
 

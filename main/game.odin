@@ -50,8 +50,10 @@ GridDim :: struct {
     h: i32,
 }
 
+PieceData :: [PIECE_WIDTH * PIECE_HEIGHT]int
+
 Piece :: struct {
-    filled:       [PIECE_WIDTH * PIECE_HEIGHT]int,
+    filled:       PieceData,
     bounding_dim: GridDim,
     rot_centre:   GridPos,
 }
@@ -230,6 +232,7 @@ game_screen_populate_entities :: proc(game: Game) {
         ),
     )
 }
+
 main_menu_screen_populate_entities :: proc(game: Game) {
     start_str := "START"
     surface_dim := extent_to_dim(gc.surface_extent)
@@ -280,8 +283,13 @@ main_menu_screen_populate_entities :: proc(game: Game) {
     )
 }
 
+// TODO-NEXT: draw 8 piece buttons in a fixed width 2x4 grid on the right of the screen with a save button underneath
 edit_screen_populate_entities :: proc(game: Game) {
-    // TODO
+    piece_button_dim := Dim {
+        w = 150,
+        h = 150,
+    }
+    entity_push(piece_button_entity(Pos{x = 0.5, y = 0.25}, piece_button_dim, piece1.filled))
 }
 
 game_populate_entities :: proc(game: Game) {
@@ -463,7 +471,7 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     gs.active_piece_position = updated_position
 }
 
-get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]int) {
+get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: PieceData) {
     // assumes zero initialised output == empty
     for j in 0 ..< piece.bounding_dim.h {
         write_col_idx := j
@@ -476,7 +484,7 @@ get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDT
     return
 }
 
-get_anticlockwise_rotated_filled_array :: proc(piece: Piece) -> (output: [PIECE_WIDTH * PIECE_HEIGHT]int) {
+get_anticlockwise_rotated_filled_array :: proc(piece: Piece) -> (output: PieceData) {
     // assumes zero initialised output == empty
     for j in 0 ..< piece.bounding_dim.h {
         write_col_idx := piece.bounding_dim.h - 1 - j

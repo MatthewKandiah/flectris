@@ -8,8 +8,10 @@ BACKGROUND_Z :: 0
 GRID_BACKGROUND_Z :: 0.1
 GRID_CELL_Z :: 0.2
 GAME_PANEL_Z :: 0.2
-UI_TEXT_BACKGROUND_Z :: 0.8
-UI_TEXT_Z :: 0.9
+UI_PIECE_BACKGROUND_Z :: 0.8
+UI_PIECE_Z :: 0.85
+UI_TEXT_BACKGROUND_Z :: 0.9
+UI_TEXT_Z :: 0.95
 
 Drawable :: struct {
     pos:             Pos,
@@ -86,8 +88,10 @@ draw_entities :: proc() {
 
 draw_entity :: proc(entity: Entity) {
     switch entity.type {
-    case .Button:
-        draw_button(entity)
+    case .TextButton:
+        draw_text_button(entity)
+    case .PieceButton:
+	draw_piece_button(entity)
     case .Grid:
         draw_grid(entity)
     case .GamePanel:
@@ -95,11 +99,19 @@ draw_entity :: proc(entity: Entity) {
     }
 }
 
-draw_button :: proc(entity: Entity) {
+draw_text_button :: proc(entity: Entity) {
     data := entity.data.(TextButtonEntityData)
     colour := RED if data.hovered else BLUE
     draw_rect(colour, entity.pos, entity.dim, UI_TEXT_BACKGROUND_Z)
     draw_string(data.str, entity.pos, entity.dim, UI_TEXT_Z)
+}
+
+draw_piece_button :: proc(entity: Entity) {
+    fmt.println("draw_piece_button called")
+    fmt.println("DRAWABLES_COUNT before", DRAWABLES_COUNT)
+    data := entity.data.(PieceButtonEntityData)
+    draw_rect(GREEN, entity.pos, entity.dim, UI_PIECE_BACKGROUND_Z)
+    fmt.println("DRAWABLES_COUNT after", DRAWABLES_COUNT)
 }
 
 draw_grid :: proc(entity: Entity) {
