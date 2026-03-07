@@ -252,7 +252,7 @@ main_menu_screen_populate_entities :: proc(game: Game) {
         y = start_button_pos.y - 3 * button_dim.h,
     }
     entity_push(
-        button_entity(
+        text_button_entity(
             start_button_pos,
             button_dim,
             transmute([]u8)start_str,
@@ -261,7 +261,7 @@ main_menu_screen_populate_entities :: proc(game: Game) {
         ),
     )
     entity_push(
-        button_entity(
+        text_button_entity(
             exit_button_pos,
             button_dim,
             transmute([]u8)exit_str,
@@ -270,7 +270,7 @@ main_menu_screen_populate_entities :: proc(game: Game) {
         ),
     )
     entity_push(
-        button_entity(
+        text_button_entity(
             edit_button_pos,
             button_dim,
             transmute([]u8)edit_str,

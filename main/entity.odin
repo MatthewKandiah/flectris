@@ -27,12 +27,12 @@ EntityType :: enum {
 }
 
 EntityData :: union {
-    ButtonEntityData,
+    TextButtonEntityData,
     GridEntityData,
     GamePanelEntityData,
 }
 
-ButtonEntityData :: struct {
+TextButtonEntityData :: struct {
     str:     []u8,
     hovered: bool,
 }
@@ -53,14 +53,14 @@ entity_push :: proc(entity: Entity) {
     ENTITY_COUNT += 1
 }
 
-button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(_: ^Game)) -> Entity {
+text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(_: ^Game)) -> Entity {
     return Entity {
         pos = pos,
         dim = dim,
         clickable = true,
         type = .Button,
         on_click = on_click,
-        data = ButtonEntityData{str = str, hovered = hovered},
+        data = TextButtonEntityData{str = str, hovered = hovered},
     }
 }
 

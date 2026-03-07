@@ -96,7 +96,7 @@ draw_entity :: proc(entity: Entity) {
 }
 
 draw_button :: proc(entity: Entity) {
-    data := entity.data.(ButtonEntityData)
+    data := entity.data.(TextButtonEntityData)
     colour := RED if data.hovered else BLUE
     draw_rect(colour, entity.pos, entity.dim, UI_TEXT_BACKGROUND_Z)
     draw_string(data.str, entity.pos, entity.dim, UI_TEXT_Z)
