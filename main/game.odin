@@ -9,7 +9,7 @@ Game :: struct {
     state:  union {
         MainMenuState,
         GameState,
-	EditState,
+        EditState,
     },
 }
 
@@ -171,122 +171,188 @@ init_game :: proc() -> Game {
     return Game{screen = .MAIN_MENU, state = initial_main_menu_state}
 }
 
+game_screen_populate_entities :: proc(game: Game) {
+    game_state := game.state.(GameState)
+
+    panel_dim := Dim {
+        w = 480,
+        h = cast(f32)(gc.surface_extent.height),
+    }
+    panel_pos := Pos {
+        x = cast(f32)(gc.surface_extent.width) - panel_dim.w,
+        y = 0,
+    }
+
+    entity_push(game_panel_entity(panel_pos, panel_dim, game_state.score, game_state.next_piece))
+
+    grid_available_space := Dim {
+        w = cast(f32)gc.surface_extent.width - panel_dim.w,
+        h = cast(f32)gc.surface_extent.height,
+    }
+    grid_w_over_h := cast(f32)GRID_WIDTH / cast(f32)GRID_HEIGHT
+    grid_available_space_w_over_h := grid_available_space.w / grid_available_space.h
+
+    grid_pos: Pos
+    grid_dim: Dim
+    if (grid_w_over_h > grid_available_space_w_over_h) {
+        // grid fills available width
+        height := grid_available_space.w / grid_w_over_h
+        grid_dim = {
+            w = grid_available_space.w,
+            h = height,
+        }
+        unfilled_height := grid_available_space.h - height
+        grid_pos = {
+            x = 0,
+            y = unfilled_height / 2,
+        }
+    } else {
+        // grid fills available height
+        width := grid_available_space.h * grid_w_over_h
+        grid_dim = {
+            w = width,
+            h = grid_available_space.h,
+        }
+        unfilled_width := grid_available_space.w - width
+        grid_pos = {
+            x = unfilled_width / 2,
+            y = 0,
+        }
+    }
+    entity_push(
+        grid_entity(
+            grid_pos,
+            grid_dim,
+            game_state.grid,
+            game_state.has_active_piece,
+            game_state.active_piece_position,
+            game_state.active_piece,
+        ),
+    )
+}
+main_menu_screen_populate_entities :: proc(game: Game) {
+    start_str := "START"
+    surface_dim := extent_to_dim(gc.surface_extent)
+    button_dim := Dim {
+        w = 200,
+        h = 100,
+    }
+    start_button_pos := Pos {
+        x = surface_dim.w / 2 - button_dim.w / 2,
+        y = 2 * surface_dim.h / 3 - button_dim.h / 2,
+    }
+    exit_str := "EXIT"
+    exit_button_pos := Pos {
+        x = start_button_pos.x,
+        y = start_button_pos.y - 1.5 * button_dim.h,
+    }
+    edit_str := "EDIT"
+    edit_button_pos := Pos {
+        x = start_button_pos.x,
+        y = start_button_pos.y - 3 * button_dim.h,
+    }
+    entity_push(
+        button_entity(
+            start_button_pos,
+            button_dim,
+            transmute([]u8)start_str,
+            is_hovered(start_button_pos, button_dim),
+            start_game_on_click,
+        ),
+    )
+    entity_push(
+        button_entity(
+            exit_button_pos,
+            button_dim,
+            transmute([]u8)exit_str,
+            is_hovered(exit_button_pos, button_dim),
+            exit_on_click,
+        ),
+    )
+    entity_push(
+        button_entity(
+            edit_button_pos,
+            button_dim,
+            transmute([]u8)edit_str,
+            is_hovered(edit_button_pos, button_dim),
+            edit_on_click,
+        ),
+    )
+}
+
+edit_screen_populate_entities :: proc(game: Game) {
+    // TODO
+}
+
 game_populate_entities :: proc(game: Game) {
     ENTITY_COUNT = 0
     switch game.screen {
     case .GAME:
-        {
-            game_state := game.state.(GameState)
-
-            panel_dim := Dim {
-                w = 480,
-                h = cast(f32)(gc.surface_extent.height),
-            }
-            panel_pos := Pos {
-                x = cast(f32)(gc.surface_extent.width) - panel_dim.w,
-                y = 0,
-            }
-
-            entity_push(game_panel_entity(panel_pos, panel_dim, game_state.score, game_state.next_piece))
-
-            grid_available_space := Dim {
-                w = cast(f32)gc.surface_extent.width - panel_dim.w,
-                h = cast(f32)gc.surface_extent.height,
-            }
-            grid_w_over_h := cast(f32)GRID_WIDTH / cast(f32)GRID_HEIGHT
-            grid_available_space_w_over_h := grid_available_space.w / grid_available_space.h
-
-            grid_pos: Pos
-            grid_dim: Dim
-            if (grid_w_over_h > grid_available_space_w_over_h) {
-                // grid fills available width
-                height := grid_available_space.w / grid_w_over_h
-                grid_dim = {
-                    w = grid_available_space.w,
-                    h = height,
-                }
-                unfilled_height := grid_available_space.h - height
-                grid_pos = {
-                    x = 0,
-                    y = unfilled_height / 2,
-                }
-            } else {
-                // grid fills available height
-                width := grid_available_space.h * grid_w_over_h
-                grid_dim = {
-                    w = width,
-                    h = grid_available_space.h,
-                }
-                unfilled_width := grid_available_space.w - width
-                grid_pos = {
-                    x = unfilled_width / 2,
-                    y = 0,
-                }
-            }
-            entity_push(
-                grid_entity(
-                    grid_pos,
-                    grid_dim,
-                    game_state.grid,
-                    game_state.has_active_piece,
-                    game_state.active_piece_position,
-                    game_state.active_piece,
-                ),
-            )
-        }
+        game_screen_populate_entities(game)
     case .MAIN_MENU:
-        {
-            start_str := "START"
-            surface_dim := extent_to_dim(gc.surface_extent)
-            button_dim := Dim {
-                w = 200,
-                h = 100,
-            }
-            start_button_pos := Pos {
-                x = surface_dim.w / 2 - button_dim.w / 2,
-                y = 2*surface_dim.h / 3 - button_dim.h / 2,
-            }
-            exit_str := "EXIT"
-            exit_button_pos := Pos {
-                x = start_button_pos.x,
-                y = start_button_pos.y - 1.5 * button_dim.h,
-            }
-	    edit_str := "EDIT"
-	    edit_button_pos := Pos {
-		x = start_button_pos.x,
-		y = start_button_pos.y - 3 * button_dim.h,
-	    }
-            entity_push(
-                button_entity(
-                    start_button_pos,
-                    button_dim,
-                    transmute([]u8)start_str,
-                    is_hovered(start_button_pos, button_dim),
-                    start_game_on_click,
-                ),
-            )
-            entity_push(
-                button_entity(
-                    exit_button_pos,
-                    button_dim,
-                    transmute([]u8)exit_str,
-                    is_hovered(exit_button_pos, button_dim),
-                    exit_on_click,
-                ),
-            )
-	    entity_push(
-		button_entity(
-		    edit_button_pos,
-		    button_dim,
-		    transmute([]u8)edit_str,
-		    is_hovered(edit_button_pos, button_dim),
-		    edit_on_click,
-		)
-	    )
-        }
+        main_menu_screen_populate_entities(game)
     case .EDIT:
+        edit_screen_populate_entities(game)
+    }
+}
+
+main_menu_screen_handle_event :: proc(game: ^Game, event: Event) {
+    switch event.type {
+    case .Keyboard:
         {
-            // TODO
+            return
+        }
+    case .Mouse:
+        {
+            mouse_event := event.data.(MouseEvent)
+            if mouse_event.type != .Press {return}
+            for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+                if !entity.clickable {continue}
+                if !is_hovered(entity.pos, entity.dim) {continue}
+                if entity.on_click == nil {unreachable()}
+                entity.on_click(game)
+            }
+        }
+    }
+}
+
+edit_screen_handle_event :: proc(game: ^Game, event: Event) {
+    // TODO
+}
+
+game_screen_handle_event :: proc(game: ^Game, event: Event) {
+    game_state := &game.state.(GameState)
+    switch event.type {
+    case .Keyboard:
+        {
+            key_event := event.data.(KeyboardEvent)
+            if (key_event.type == .Press && key_event.char == .Space) {
+                exit_on_click(game)
+            } else if (key_event.type == .Press && key_event.char == .Left) {
+                update_active_piece_position(game_state, -1, 0)
+            } else if (key_event.type == .Press && key_event.char == .Right) {
+                update_active_piece_position(game_state, 1, 0)
+            } else if (key_event.type == .Press && key_event.char == .Down) {
+                update_active_piece_position(game_state, 0, -1)
+            } else if (key_event.type == .Press && key_event.char == .Up) {
+                for !update_active_piece_position(game_state, 0, -1) {}
+                deactivate_piece(game_state)
+            } else if (key_event.type == .Press && key_event.char == .S) {
+                rotate_active_piece(game_state, .ANTICLOCKWISE)
+            } else if (key_event.type == .Press && key_event.char == .T) {
+                rotate_active_piece(game_state, .CLOCKWISE)
+            }
+        }
+    case .Mouse:
+        {
+            mouse_event := event.data.(MouseEvent)
+            if mouse_event.type != .Press {return}
+            for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+                if !entity.clickable {continue}
+                if !is_hovered(entity.pos, entity.dim) {continue}
+                if entity.on_click == nil {unreachable()}
+                entity.on_click(game)
+            }
         }
     }
 }
@@ -294,66 +360,11 @@ game_populate_entities :: proc(game: Game) {
 game_handle_event :: proc(game: ^Game, event: Event) {
     switch game.screen {
     case .MAIN_MENU:
-        {
-            switch event.type {
-            case .Keyboard:
-                {
-                    return
-                }
-            case .Mouse:
-                {
-                    mouse_event := event.data.(MouseEvent)
-                    if mouse_event.type != .Press {return}
-                    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-                        if !entity.clickable {continue}
-                        if !is_hovered(entity.pos, entity.dim) {continue}
-                        if entity.on_click == nil {unreachable()}
-                        entity.on_click(game)
-                    }
-                }
-            }
-        }
+        main_menu_screen_handle_event(game, event)
     case .EDIT:
-        {
-            // TODO
-        }
+        edit_screen_handle_event(game, event)
     case .GAME:
-        {
-            game_state := &game.state.(GameState)
-            switch event.type {
-            case .Keyboard:
-                {
-                    key_event := event.data.(KeyboardEvent)
-                    if (key_event.type == .Press && key_event.char == .Space) {
-                        exit_on_click(game)
-                    } else if (key_event.type == .Press && key_event.char == .Left) {
-                        update_active_piece_position(game_state, -1, 0)
-                    } else if (key_event.type == .Press && key_event.char == .Right) {
-                        update_active_piece_position(game_state, 1, 0)
-                    } else if (key_event.type == .Press && key_event.char == .Down) {
-                        update_active_piece_position(game_state, 0, -1)
-                    } else if (key_event.type == .Press && key_event.char == .Up) {
-                        for !update_active_piece_position(game_state, 0, -1) {}
-                        deactivate_piece(game_state)
-                    } else if (key_event.type == .Press && key_event.char == .S) {
-                        rotate_active_piece(game_state, .ANTICLOCKWISE)
-                    } else if (key_event.type == .Press && key_event.char == .T) {
-                        rotate_active_piece(game_state, .CLOCKWISE)
-                    }
-                }
-            case .Mouse:
-                {
-                    mouse_event := event.data.(MouseEvent)
-                    if mouse_event.type != .Press {return}
-                    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-                        if !entity.clickable {continue}
-                        if !is_hovered(entity.pos, entity.dim) {continue}
-                        if entity.on_click == nil {unreachable()}
-                        entity.on_click(game)
-                    }
-                }
-            }
-        }
+        game_screen_handle_event(game, event)
     }
 }
 
@@ -534,7 +545,7 @@ game_update :: proc(game: ^Game) {
     case .MAIN_MENU:
         {}
     case .EDIT:
-	{}
+        {}
     case .GAME:
         {
             game_state := &game.state.(GameState)
