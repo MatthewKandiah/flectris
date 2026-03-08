@@ -96,6 +96,8 @@ draw_entity :: proc(entity: Entity) {
         draw_grid(entity)
     case .GamePanel:
         draw_game_panel(entity)
+    case .EditGrid:
+	draw_edit_grid(entity)
     }
 }
 
@@ -195,6 +197,12 @@ draw_game_panel :: proc(entity: Entity) {
         data.next_piece.filled[:],
         UI_TEXT_Z,
     )
+}
+
+draw_edit_grid :: proc(entity: Entity) {
+    data := entity.data.(EditGridEntityData)
+
+    draw_grid_cells(entity.pos, entity.dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.piece_data[:], GRID_CELL_Z)
 }
 
 draw_number :: proc(n: int, min_drawn_digits: int, pos: Pos, dim: Dim, z: f32) {

@@ -25,9 +25,10 @@ LINES_PER_LEVEL :: 20
 MAX_PIECES :: 8
 PIECE_BUFFER := [MAX_PIECES]Piece{}
 PIECE_COUNT := 0
+GridData :: [GRID_WIDTH * GRID_HEIGHT]int
 GameState :: struct {
     has_lost:              bool,
-    grid:                  [GRID_WIDTH * GRID_HEIGHT]int,
+    grid:                  GridData,
     piece_buffer:          [MAX_PIECES]Piece,
     piece_count:           int,
     active_piece:          Piece,
@@ -344,6 +345,13 @@ edit_screen_populate_entities :: proc(game: Game) {
     }
 
     {     // main grid
+	entity_push(
+	    edit_grid_entity(
+		Pos {x = 0, y = 0},
+		Dim {w = 400, h = 400 },
+		{}, // filled probably needs to live on edit screen state
+	    )
+	)
     }
 }
 

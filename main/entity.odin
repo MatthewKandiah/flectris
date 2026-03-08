@@ -25,6 +25,7 @@ EntityType :: enum {
     PieceButton,
     Grid,
     GamePanel,
+    EditGrid,
 }
 
 EntityData :: union {
@@ -32,6 +33,7 @@ EntityData :: union {
     PieceButtonEntityData,
     GridEntityData,
     GamePanelEntityData,
+    EditGridEntityData,
 }
 
 TextButtonEntityData :: struct {
@@ -44,7 +46,7 @@ PieceButtonEntityData :: struct {
 }
 
 GridEntityData :: struct {
-    cells:            [GRID_WIDTH * GRID_HEIGHT]int,
+    cells:            GridData,
     rot_centre:       GridPos,
     has_active_piece: bool,
 }
@@ -54,12 +56,16 @@ GamePanelEntityData :: struct {
     next_piece: Piece,
 }
 
+EditGridEntityData :: struct {
+    piece_data: PieceData,
+}
+
 entity_push :: proc(entity: Entity) {
     ENTITY_BUFFER[ENTITY_COUNT] = entity
     ENTITY_COUNT += 1
 }
 
-text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(^Game)) -> Entity {
+text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(_: ^Game)) -> Entity {
     return Entity {
         pos = pos,
         dim = dim,
@@ -126,4 +132,11 @@ is_hovered :: proc(pos: Pos, dim: Dim) -> bool {
             gc.cursor_pos.y < pos.y ||
             gc.cursor_pos.y > pos.y + dim.h) \
     )
+}
+
+edit_grid_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData) -> Entity {
+    data := EditGridEntityData {
+	piece_data = piece_data
+    }
+    return Entity {pos = pos, dim = dim, type = .EditGrid, data = data}
 }
