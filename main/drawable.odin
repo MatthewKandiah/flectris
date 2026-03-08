@@ -107,11 +107,8 @@ draw_text_button :: proc(entity: Entity) {
 }
 
 draw_piece_button :: proc(entity: Entity) {
-    fmt.println("draw_piece_button called")
-    fmt.println("DRAWABLES_COUNT before", DRAWABLES_COUNT)
     data := entity.data.(PieceButtonEntityData)
     draw_rect(GREEN, entity.pos, entity.dim, UI_PIECE_BACKGROUND_Z)
-    fmt.println("DRAWABLES_COUNT after", DRAWABLES_COUNT)
 }
 
 draw_grid :: proc(entity: Entity) {

@@ -283,13 +283,68 @@ main_menu_screen_populate_entities :: proc(game: Game) {
     )
 }
 
-// TODO-NEXT: draw 8 piece buttons in a fixed width 2x4 grid on the right of the screen with a save button underneath
 edit_screen_populate_entities :: proc(game: Game) {
-    piece_button_dim := Dim {
-        w = 150,
-        h = 150,
+    surface_dim := extent_to_dim(gc.surface_extent)
+    {     // side panel
+        side_panel_width: f32 = 400
+        vertical_gap: f32 = 10
+        horizontal_gap: f32 = 5
+
+        piece_button_dim := Dim {
+            w = (side_panel_width - (3 * horizontal_gap)) / 2,
+            h = (surface_dim.h - (7 * vertical_gap)) / 6,
+        }
+        text_button_dim := Dim {
+            w = piece_button_dim.w * 2 + horizontal_gap,
+            h = piece_button_dim.h,
+        }
+
+        exit_str := "EXIT"
+        exit_button_pos := Pos {
+            x = surface_dim.w - side_panel_width + horizontal_gap,
+            y = vertical_gap,
+        }
+
+        cancel_str := "CANCEL"
+        cancel_button_pos := Pos {
+            x = exit_button_pos.x,
+            y = exit_button_pos.y + text_button_dim.h + vertical_gap,
+        }
+
+        entity_push(
+            text_button_entity(exit_button_pos, text_button_dim, transmute([]u8)exit_str, false, edit_exit_on_click),
+        )
+        entity_push(
+            text_button_entity(
+                cancel_button_pos,
+                text_button_dim,
+                transmute([]u8)cancel_str,
+                false,
+                edit_cancel_on_click,
+            ),
+        )
+
+        for col in 0 ..= 1 {
+            for row in 0 ..= 3 {
+                piece_idx := 6 - (2 * row) + col
+                piece_button_pos := Pos {
+                    x = cancel_button_pos.x + cast(f32)col * (piece_button_dim.w + horizontal_gap),
+                    y = cancel_button_pos.y + text_button_dim.h + vertical_gap + cast(f32)row * (piece_button_dim.h + vertical_gap),
+                }
+                entity_push(
+                    piece_button_entity(
+                        piece_button_pos,
+                        piece_button_dim,
+                        piece1.filled,
+                        edit_piece_on_clicks[piece_idx],
+                    ),
+                )
+            }
+        }
     }
-    entity_push(piece_button_entity(Pos{x = 0.5, y = 0.25}, piece_button_dim, piece1.filled))
+
+    {     // main grid
+    }
 }
 
 game_populate_entities :: proc(game: Game) {
@@ -307,25 +362,20 @@ game_populate_entities :: proc(game: Game) {
 main_menu_screen_handle_event :: proc(game: ^Game, event: Event) {
     switch event.type {
     case .Keyboard:
-        {
-            return
-        }
+        return
+
     case .Mouse:
-        {
-            mouse_event := event.data.(MouseEvent)
-            if mouse_event.type != .Press {return}
-            for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-                if !entity.clickable {continue}
-                if !is_hovered(entity.pos, entity.dim) {continue}
-                if entity.on_click == nil {unreachable()}
-                entity.on_click(game)
-            }
-        }
+        handle_mouse_event(game, event.data.(MouseEvent))
     }
 }
 
 edit_screen_handle_event :: proc(game: ^Game, event: Event) {
-    // TODO
+    switch event.type {
+    case .Keyboard:
+        return
+    case .Mouse:
+        handle_mouse_event(game, event.data.(MouseEvent))
+    }
 }
 
 game_screen_handle_event :: proc(game: ^Game, event: Event) {
@@ -352,16 +402,17 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
             }
         }
     case .Mouse:
-        {
-            mouse_event := event.data.(MouseEvent)
-            if mouse_event.type != .Press {return}
-            for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-                if !entity.clickable {continue}
-                if !is_hovered(entity.pos, entity.dim) {continue}
-                if entity.on_click == nil {unreachable()}
-                entity.on_click(game)
-            }
-        }
+        handle_mouse_event(game, event.data.(MouseEvent))
+    }
+}
+
+handle_mouse_event :: proc(game: ^Game, mouse_event: MouseEvent) {
+    if mouse_event.type != .Press {return}
+    for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
+        if !entity.clickable {continue}
+        if !is_hovered(entity.pos, entity.dim) {continue}
+        if entity.on_click == nil {unreachable()}
+        entity.on_click(game)
     }
 }
 
@@ -396,6 +447,36 @@ exit_on_click :: proc(_: ^Game) {
 edit_on_click :: proc(game: ^Game) {
     game.screen = .EDIT
     fmt.println("EDIT")
+}
+
+edit_cancel_on_click :: proc(_: ^Game) {
+    fmt.println("edit cancel clicked")
+}
+
+edit_exit_on_click :: proc(_: ^Game) {
+    fmt.println("edit exit clicked")
+}
+
+edit_piece_on_click :: proc(n: int) {
+    fmt.println("edit piece clicked", n)
+}
+edit_piece0_on_click :: proc(_: ^Game) {edit_piece_on_click(0)}
+edit_piece1_on_click :: proc(_: ^Game) {edit_piece_on_click(1)}
+edit_piece2_on_click :: proc(_: ^Game) {edit_piece_on_click(2)}
+edit_piece3_on_click :: proc(_: ^Game) {edit_piece_on_click(3)}
+edit_piece4_on_click :: proc(_: ^Game) {edit_piece_on_click(4)}
+edit_piece5_on_click :: proc(_: ^Game) {edit_piece_on_click(5)}
+edit_piece6_on_click :: proc(_: ^Game) {edit_piece_on_click(6)}
+edit_piece7_on_click :: proc(_: ^Game) {edit_piece_on_click(7)}
+edit_piece_on_clicks := []proc(_: ^Game) {
+    edit_piece0_on_click,
+    edit_piece1_on_click,
+    edit_piece2_on_click,
+    edit_piece3_on_click,
+    edit_piece4_on_click,
+    edit_piece5_on_click,
+    edit_piece6_on_click,
+    edit_piece7_on_click,
 }
 
 Dir :: enum {

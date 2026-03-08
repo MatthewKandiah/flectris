@@ -59,7 +59,7 @@ entity_push :: proc(entity: Entity) {
     ENTITY_COUNT += 1
 }
 
-text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(_: ^Game)) -> Entity {
+text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(^Game)) -> Entity {
     return Entity {
         pos = pos,
         dim = dim,
@@ -70,12 +70,12 @@ text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_clic
     }
 }
 
-piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData) -> Entity {
+piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, on_click: proc(^Game)) -> Entity {
     return Entity {
         pos = pos,
         dim = dim,
-        clickable = false,
-        on_click = nil,
+        clickable = true,
+        on_click = on_click,
         type = .PieceButton,
         data = PieceButtonEntityData{piece_data = piece_data},
     }
