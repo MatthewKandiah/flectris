@@ -110,7 +110,7 @@ draw_text_button :: proc(entity: Entity) {
 
 draw_piece_button :: proc(entity: Entity) {
     data := entity.data.(PieceButtonEntityData)
-    draw_rect(GREEN, entity.pos, entity.dim, UI_PIECE_BACKGROUND_Z)
+    draw_grid_cells(entity.pos, entity.dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.piece_data[:], GRID_CELL_Z)
 }
 
 draw_grid :: proc(entity: Entity) {

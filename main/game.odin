@@ -11,26 +11,34 @@ Game :: struct {
         GameState,
         EditState,
     },
+    global: GlobalState,
+}
+
+GlobalState :: struct {
+    piece_buffer: [MAX_PIECES]Piece,
+    piece_count:  int,
 }
 
 MainMenuState :: struct {}
 
 initial_main_menu_state :: MainMenuState{}
 
-EditState :: struct {}
+EditState :: struct {
+    piece_buffer: [MAX_PIECES]Piece,
+}
 
-initial_edit_state :: EditState{}
+initial_edit_state :: proc(game: Game) -> EditState {
+    return EditState {
+	piece_buffer = game.global.piece_buffer,
+    }
+}
 
 LINES_PER_LEVEL :: 20
 MAX_PIECES :: 8
-PIECE_BUFFER := [MAX_PIECES]Piece{}
-PIECE_COUNT := 0
 GridData :: [GRID_WIDTH * GRID_HEIGHT]int
 GameState :: struct {
     has_lost:              bool,
     grid:                  GridData,
-    piece_buffer:          [MAX_PIECES]Piece,
-    piece_count:           int,
     active_piece:          Piece,
     next_piece:            Piece,
     active_piece_position: GridPos,
@@ -164,14 +172,16 @@ initial_game_state :: GameState {
     ticks_per_drop = 60,
     ticks_until_drop = 60,
     has_lost = false,
-    piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}},
-    piece_count = 3,
     score = 0,
     level_lines_cleared = 0,
 }
 
 init_game :: proc() -> Game {
-    return Game{screen = .MAIN_MENU, state = initial_main_menu_state}
+    return Game {
+        screen = .MAIN_MENU,
+        state = initial_main_menu_state,
+        global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}}, piece_count = 3},
+    }
 }
 
 game_screen_populate_entities :: proc(game: Game) {
@@ -332,11 +342,12 @@ edit_screen_populate_entities :: proc(game: Game) {
                     x = cancel_button_pos.x + cast(f32)col * (piece_button_dim.w + horizontal_gap),
                     y = cancel_button_pos.y + text_button_dim.h + vertical_gap + cast(f32)row * (piece_button_dim.h + vertical_gap),
                 }
+		piece_data := game.global.piece_buffer[piece_idx].filled if piece_idx < game.global.piece_count else {}
                 entity_push(
                     piece_button_entity(
                         piece_button_pos,
                         piece_button_dim,
-                        piece1.filled,
+                        piece_data,
                         edit_piece_on_clicks[piece_idx],
                     ),
                 )
@@ -345,13 +356,13 @@ edit_screen_populate_entities :: proc(game: Game) {
     }
 
     {     // main grid
-	entity_push(
-	    edit_grid_entity(
-		Pos {x = 0, y = 0},
-		Dim {w = 400, h = 400 },
-		{}, // filled probably needs to live on edit screen state
-	    )
-	)
+        entity_push(
+            edit_grid_entity(
+                Pos{x = 0, y = 0},
+                Dim{w = 400, h = 400},
+                {}, // filled probably needs to live on edit screen state
+            ),
+        )
     }
 }
 
@@ -444,7 +455,7 @@ Screen :: enum {
 start_game_on_click :: proc(game: ^Game) {
     game.screen = .GAME
     game_state := initial_game_state
-    game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
+    game_state.next_piece = game.global.piece_buffer[rand.int_max(game.global.piece_count)]
     game.state = game_state
 }
 
@@ -454,7 +465,7 @@ exit_on_click :: proc(_: ^Game) {
 
 edit_on_click :: proc(game: ^Game) {
     game.screen = .EDIT
-    fmt.println("EDIT")
+    game.state = initial_edit_state(game^)
 }
 
 edit_cancel_on_click :: proc(_: ^Game) {
@@ -650,7 +661,7 @@ game_update :: proc(game: ^Game) {
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
                 game_state.active_piece = game_state.next_piece
-                game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
+                game_state.next_piece = game.global.piece_buffer[rand.int_max(game.global.piece_count)]
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,
