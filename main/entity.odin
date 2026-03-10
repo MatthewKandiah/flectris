@@ -21,6 +21,7 @@ Entity :: struct {
 }
 
 EntityType :: enum {
+    InvisibleClickHandler,
     TextButton,
     PieceButton,
     PieceButtonSelectedBox,
@@ -30,12 +31,15 @@ EntityType :: enum {
 }
 
 EntityData :: union {
+    InvisibleClickHandlerEntityData,
     TextButtonEntityData,
     PieceButtonEntityData,
     GridEntityData,
     GamePanelEntityData,
     EditGridEntityData,
 }
+
+InvisibleClickHandlerEntityData :: struct {}
 
 TextButtonEntityData :: struct {
     str:     []u8,
@@ -66,6 +70,17 @@ entity_push :: proc(entity: Entity) {
     ENTITY_COUNT += 1
 }
 
+invisible_click_handler_entity :: proc(pos: Pos, dim: Dim, on_click: proc(_: ^Game)) -> Entity {
+    return Entity {
+        pos = pos,
+        dim = dim,
+        clickable = true,
+        type = .InvisibleClickHandler,
+        on_click = on_click,
+        data = InvisibleClickHandlerEntityData{},
+    }
+}
+
 text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_click: proc(_: ^Game)) -> Entity {
     return Entity {
         pos = pos,
@@ -77,7 +92,7 @@ text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_clic
     }
 }
 
-piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, on_click: proc(^Game)) -> Entity {
+piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, on_click: proc(_: ^Game)) -> Entity {
     return Entity {
         pos = pos,
         dim = dim,
@@ -89,14 +104,7 @@ piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, on_click:
 }
 
 piece_button_selected_box_entity :: proc(pos: Pos, dim: Dim) -> Entity {
-    return Entity {
-	pos = pos,
-	dim = dim,
-	clickable = false,
-	on_click = nil,
-	type = .PieceButtonSelectedBox,
-	data = {},
-    }
+    return Entity{pos = pos, dim = dim, clickable = false, on_click = nil, type = .PieceButtonSelectedBox, data = {}}
 }
 
 grid_entity :: proc(
@@ -148,7 +156,7 @@ is_hovered :: proc(pos: Pos, dim: Dim) -> bool {
 
 edit_grid_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData) -> Entity {
     data := EditGridEntityData {
-	piece_data = piece_data
+        piece_data = piece_data,
     }
-    return Entity {pos = pos, dim = dim, type = .EditGrid, data = data}
+    return Entity{pos = pos, dim = dim, type = .EditGrid, data = data}
 }

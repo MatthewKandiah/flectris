@@ -24,15 +24,12 @@ MainMenuState :: struct {}
 initial_main_menu_state :: MainMenuState{}
 
 EditState :: struct {
-    piece_buffer: [MAX_PIECES]Piece,
+    piece_buffer:     [MAX_PIECES]Piece,
     active_piece_idx: int,
 }
 
 initial_edit_state :: proc(game: Game) -> EditState {
-    return EditState {
-	piece_buffer = game.global.piece_buffer,
-	active_piece_idx = 0,
-    }
+    return EditState{piece_buffer = game.global.piece_buffer, active_piece_idx = 0}
 }
 
 LINES_PER_LEVEL :: 20
@@ -345,7 +342,7 @@ edit_screen_populate_entities :: proc(game: Game) {
                     x = cancel_button_pos.x + cast(f32)col * (piece_button_dim.w + horizontal_gap),
                     y = cancel_button_pos.y + text_button_dim.h + vertical_gap + cast(f32)row * (piece_button_dim.h + vertical_gap),
                 }
-		piece_data := game.global.piece_buffer[piece_idx].filled if piece_idx < game.global.piece_count else {}
+                piece_data := game.global.piece_buffer[piece_idx].filled if piece_idx < game.global.piece_count else {}
                 entity_push(
                     piece_button_entity(
                         piece_button_pos,
@@ -354,30 +351,51 @@ edit_screen_populate_entities :: proc(game: Game) {
                         edit_piece_on_clicks[piece_idx],
                     ),
                 )
-		if state.active_piece_idx == piece_idx {
-		    entity_push(piece_button_selected_box_entity(
-			Pos{
-			    x = piece_button_pos.x - horizontal_gap,
-			    y = piece_button_pos.y - vertical_gap,
-			},
-			Dim {
-			    w = piece_button_dim.w + (2 * horizontal_gap),
-			    h = piece_button_dim.h + (2 * vertical_gap),
-			},
-		    ))
-		}
+                if state.active_piece_idx == piece_idx {
+                    entity_push(
+                        piece_button_selected_box_entity(
+                            Pos{x = piece_button_pos.x - horizontal_gap, y = piece_button_pos.y - vertical_gap},
+                            Dim {
+                                w = piece_button_dim.w + (2 * horizontal_gap),
+                                h = piece_button_dim.h + (2 * vertical_gap),
+                            },
+                        ),
+                    )
+                }
             }
         }
     }
 
     {     // main grid
-        entity_push(
-            edit_grid_entity(
-                Pos{x = 0, y = 0},
-                Dim{w = 400, h = 400},
-		state.piece_buffer[state.active_piece_idx].filled,
-            ),
-        )
+        grid_pos := Pos {
+            x = 0,
+            y = 0,
+        }
+        grid_dim := Dim {
+            w = 400,
+            h = 400,
+        }
+        entity_push(edit_grid_entity(grid_pos, grid_dim, state.piece_buffer[state.active_piece_idx].filled))
+        click_handler_dim := Dim {
+            w = grid_dim.w / 5,
+            h = grid_dim.h / 5,
+        }
+        for col in 0 ..= 4 {
+            for row in 0 ..= 4 {
+                click_handler_pos := Pos {
+                    x = grid_pos.x + (cast(f32)col * click_handler_dim.w),
+                    y = grid_pos.y + (cast(f32)row * click_handler_dim.h),
+                }
+                click_handler_idx := col + (4 - row) * 5
+                entity_push(
+                    invisible_click_handler_entity(
+                        click_handler_pos,
+                        click_handler_dim,
+                        edit_grid_button_on_clicks[click_handler_idx],
+                    ),
+                )
+            }
+        }
     }
 }
 
@@ -511,6 +529,62 @@ edit_piece_on_clicks := []proc(game: ^Game) {
     edit_piece5_on_click,
     edit_piece6_on_click,
     edit_piece7_on_click,
+}
+
+edit_grid_button_on_click :: proc(game: ^Game, n: int) {
+    fmt.println("clicked button", n)
+}
+edit_grid_button0_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 0)}
+edit_grid_button1_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 1)}
+edit_grid_button2_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 2)}
+edit_grid_button3_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 3)}
+edit_grid_button4_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 4)}
+edit_grid_button5_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 5)}
+edit_grid_button6_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 6)}
+edit_grid_button7_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 7)}
+edit_grid_button8_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 8)}
+edit_grid_button9_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 9)}
+edit_grid_button10_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 10)}
+edit_grid_button11_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 11)}
+edit_grid_button12_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 12)}
+edit_grid_button13_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 13)}
+edit_grid_button14_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 14)}
+edit_grid_button15_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 15)}
+edit_grid_button16_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 16)}
+edit_grid_button17_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 17)}
+edit_grid_button18_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 18)}
+edit_grid_button19_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 19)}
+edit_grid_button20_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 20)}
+edit_grid_button21_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 21)}
+edit_grid_button22_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 22)}
+edit_grid_button23_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 23)}
+edit_grid_button24_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 24)}
+edit_grid_button_on_clicks := []proc(game: ^Game) {
+    edit_grid_button0_on_click,
+    edit_grid_button1_on_click,
+    edit_grid_button2_on_click,
+    edit_grid_button3_on_click,
+    edit_grid_button4_on_click,
+    edit_grid_button5_on_click,
+    edit_grid_button6_on_click,
+    edit_grid_button7_on_click,
+    edit_grid_button8_on_click,
+    edit_grid_button9_on_click,
+    edit_grid_button10_on_click,
+    edit_grid_button11_on_click,
+    edit_grid_button12_on_click,
+    edit_grid_button13_on_click,
+    edit_grid_button14_on_click,
+    edit_grid_button15_on_click,
+    edit_grid_button16_on_click,
+    edit_grid_button17_on_click,
+    edit_grid_button18_on_click,
+    edit_grid_button19_on_click,
+    edit_grid_button20_on_click,
+    edit_grid_button21_on_click,
+    edit_grid_button22_on_click,
+    edit_grid_button23_on_click,
+    edit_grid_button24_on_click,
 }
 
 Dir :: enum {

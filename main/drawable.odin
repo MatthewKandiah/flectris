@@ -90,6 +90,8 @@ draw_entities :: proc() {
 
 draw_entity :: proc(entity: Entity) {
     switch entity.type {
+    case .InvisibleClickHandler:
+	break
     case .TextButton:
         draw_text_button(entity)
     case .PieceButton:
