@@ -25,11 +25,13 @@ initial_main_menu_state :: MainMenuState{}
 
 EditState :: struct {
     piece_buffer: [MAX_PIECES]Piece,
+    active_piece_idx: int,
 }
 
 initial_edit_state :: proc(game: Game) -> EditState {
     return EditState {
 	piece_buffer = game.global.piece_buffer,
+	active_piece_idx = 0,
     }
 }
 
@@ -296,6 +298,7 @@ main_menu_screen_populate_entities :: proc(game: Game) {
 
 edit_screen_populate_entities :: proc(game: Game) {
     surface_dim := extent_to_dim(gc.surface_extent)
+    state := game.state.(EditState)
     {     // side panel
         side_panel_width: f32 = 400
         vertical_gap: f32 = 10
@@ -360,7 +363,7 @@ edit_screen_populate_entities :: proc(game: Game) {
             edit_grid_entity(
                 Pos{x = 0, y = 0},
                 Dim{w = 400, h = 400},
-                {}, // filled probably needs to live on edit screen state
+		state.piece_buffer[state.active_piece_idx].filled,
             ),
         )
     }
@@ -476,18 +479,18 @@ edit_exit_on_click :: proc(_: ^Game) {
     fmt.println("edit exit clicked")
 }
 
-edit_piece_on_click :: proc(n: int) {
-    fmt.println("edit piece clicked", n)
+edit_piece_on_click :: proc(game: ^Game, n: int) {
+    (&game.state.(EditState)).active_piece_idx = n
 }
-edit_piece0_on_click :: proc(_: ^Game) {edit_piece_on_click(0)}
-edit_piece1_on_click :: proc(_: ^Game) {edit_piece_on_click(1)}
-edit_piece2_on_click :: proc(_: ^Game) {edit_piece_on_click(2)}
-edit_piece3_on_click :: proc(_: ^Game) {edit_piece_on_click(3)}
-edit_piece4_on_click :: proc(_: ^Game) {edit_piece_on_click(4)}
-edit_piece5_on_click :: proc(_: ^Game) {edit_piece_on_click(5)}
-edit_piece6_on_click :: proc(_: ^Game) {edit_piece_on_click(6)}
-edit_piece7_on_click :: proc(_: ^Game) {edit_piece_on_click(7)}
-edit_piece_on_clicks := []proc(_: ^Game) {
+edit_piece0_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 0)}
+edit_piece1_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 1)}
+edit_piece2_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 2)}
+edit_piece3_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 3)}
+edit_piece4_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 4)}
+edit_piece5_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 5)}
+edit_piece6_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 6)}
+edit_piece7_on_click :: proc(game: ^Game) {edit_piece_on_click(game, 7)}
+edit_piece_on_clicks := []proc(game: ^Game) {
     edit_piece0_on_click,
     edit_piece1_on_click,
     edit_piece2_on_click,
