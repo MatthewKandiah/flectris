@@ -354,6 +354,18 @@ edit_screen_populate_entities :: proc(game: Game) {
                         edit_piece_on_clicks[piece_idx],
                     ),
                 )
+		if state.active_piece_idx == piece_idx {
+		    entity_push(piece_button_selected_box_entity(
+			Pos{
+			    x = piece_button_pos.x - horizontal_gap,
+			    y = piece_button_pos.y - vertical_gap,
+			},
+			Dim {
+			    w = piece_button_dim.w + (2 * horizontal_gap),
+			    h = piece_button_dim.h + (2 * vertical_gap),
+			},
+		    ))
+		}
             }
         }
     }

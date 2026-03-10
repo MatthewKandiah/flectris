@@ -23,6 +23,7 @@ Entity :: struct {
 EntityType :: enum {
     TextButton,
     PieceButton,
+    PieceButtonSelectedBox,
     Grid,
     GamePanel,
     EditGrid,
@@ -84,6 +85,17 @@ piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, on_click:
         on_click = on_click,
         type = .PieceButton,
         data = PieceButtonEntityData{piece_data = piece_data},
+    }
+}
+
+piece_button_selected_box_entity :: proc(pos: Pos, dim: Dim) -> Entity {
+    return Entity {
+	pos = pos,
+	dim = dim,
+	clickable = false,
+	on_click = nil,
+	type = .PieceButtonSelectedBox,
+	data = {},
     }
 }
 

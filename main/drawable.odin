@@ -6,6 +6,8 @@ import "vendor:vulkan"
 
 BACKGROUND_Z :: 0
 GRID_BACKGROUND_Z :: 0.1
+PIECE_BUTTON_SELECTED_BOX_Z :: 0.19
+PIECE_BUTTON_Z :: 0.2
 GRID_CELL_Z :: 0.2
 GAME_PANEL_Z :: 0.2
 UI_PIECE_BACKGROUND_Z :: 0.8
@@ -92,6 +94,8 @@ draw_entity :: proc(entity: Entity) {
         draw_text_button(entity)
     case .PieceButton:
 	draw_piece_button(entity)
+    case .PieceButtonSelectedBox:
+	draw_piece_button_selected_box(entity)
     case .Grid:
         draw_grid(entity)
     case .GamePanel:
@@ -110,7 +114,11 @@ draw_text_button :: proc(entity: Entity) {
 
 draw_piece_button :: proc(entity: Entity) {
     data := entity.data.(PieceButtonEntityData)
-    draw_grid_cells(entity.pos, entity.dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.piece_data[:], GRID_CELL_Z)
+    draw_grid_cells(entity.pos, entity.dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.piece_data[:], PIECE_BUTTON_Z)
+}
+
+draw_piece_button_selected_box :: proc(entity: Entity) {
+    draw_rect(GREY, entity.pos, entity.dim, PIECE_BUTTON_SELECTED_BOX_Z)
 }
 
 draw_grid :: proc(entity: Entity) {
