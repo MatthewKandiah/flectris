@@ -342,7 +342,7 @@ edit_screen_populate_entities :: proc(game: Game) {
                     x = cancel_button_pos.x + cast(f32)col * (piece_button_dim.w + horizontal_gap),
                     y = cancel_button_pos.y + text_button_dim.h + vertical_gap + cast(f32)row * (piece_button_dim.h + vertical_gap),
                 }
-                piece_data := game.global.piece_buffer[piece_idx].filled if piece_idx < game.global.piece_count else {}
+                piece_data := game.state.(EditState).piece_buffer[piece_idx].filled
                 entity_push(
                     piece_button_entity(
                         piece_button_pos,
@@ -386,7 +386,7 @@ edit_screen_populate_entities :: proc(game: Game) {
                     x = grid_pos.x + (cast(f32)col * click_handler_dim.w),
                     y = grid_pos.y + (cast(f32)row * click_handler_dim.h),
                 }
-                click_handler_idx := col + (4 - row) * 5
+                click_handler_idx := col + row * 5
                 entity_push(
                     invisible_click_handler_entity(
                         click_handler_pos,
@@ -532,7 +532,10 @@ edit_piece_on_clicks := []proc(game: ^Game) {
 }
 
 edit_grid_button_on_click :: proc(game: ^Game, n: int) {
-    fmt.println("clicked button", n)
+    state := &game.state.(EditState)
+    old_value := state.piece_buffer[state.active_piece_idx].filled[n]
+    new_value := 0 if old_value != 0 else state.active_piece_idx + 1
+    state.piece_buffer[state.active_piece_idx].filled[n] = new_value
 }
 edit_grid_button0_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 0)}
 edit_grid_button1_on_click :: proc(game: ^Game) {edit_grid_button_on_click(game, 1)}
