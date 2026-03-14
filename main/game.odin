@@ -235,7 +235,6 @@ get_piece_bounding_box :: proc(piece: Piece) -> (pos: GridPos, dim: GridDim) {
         w = cast(i32)(x_max - x_min + 1),
         h = cast(i32)(y_max - y_min + 1),
     }
-    fmt.println(pos, dim)
     return
 }
 
