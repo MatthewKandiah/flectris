@@ -48,6 +48,7 @@ TextButtonEntityData :: struct {
 
 PieceButtonEntityData :: struct {
     piece_data: PieceData,
+    rot_centre: GridPos,
 }
 
 GridEntityData :: struct {
@@ -63,6 +64,7 @@ GamePanelEntityData :: struct {
 
 EditGridEntityData :: struct {
     piece_data: PieceData,
+    rot_centre: GridPos,
 }
 
 entity_push :: proc(entity: Entity) {
@@ -92,14 +94,14 @@ text_button_entity :: proc(pos: Pos, dim: Dim, str: []u8, hovered: bool, on_clic
     }
 }
 
-piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, on_click: proc(_: ^Game)) -> Entity {
+piece_button_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, rot_centre: GridPos, on_click: proc(_: ^Game)) -> Entity {
     return Entity {
         pos = pos,
         dim = dim,
         clickable = true,
         on_click = on_click,
         type = .PieceButton,
-        data = PieceButtonEntityData{piece_data = piece_data},
+        data = PieceButtonEntityData{piece_data = piece_data, rot_centre = rot_centre},
     }
 }
 
@@ -154,9 +156,10 @@ is_hovered :: proc(pos: Pos, dim: Dim) -> bool {
     )
 }
 
-edit_grid_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData) -> Entity {
+edit_grid_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, rot_centre: GridPos) -> Entity {
     data := EditGridEntityData {
         piece_data = piece_data,
+	rot_centre = rot_centre,
     }
     return Entity{pos = pos, dim = dim, type = .EditGrid, data = data}
 }

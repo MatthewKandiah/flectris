@@ -413,11 +413,13 @@ edit_screen_populate_entities :: proc(game: Game) {
                     y = cancel_button_pos.y + text_button_dim.h + vertical_gap + cast(f32)row * (piece_button_dim.h + vertical_gap),
                 }
                 piece_data := game.state.(EditState).piece_buffer[piece_idx].filled
+		rot_centre := game.state.(EditState).piece_buffer[piece_idx].rot_centre
                 entity_push(
                     piece_button_entity(
                         piece_button_pos,
                         piece_button_dim,
                         piece_data,
+			rot_centre,
                         edit_piece_on_clicks[piece_idx],
                     ),
                 )
@@ -445,7 +447,8 @@ edit_screen_populate_entities :: proc(game: Game) {
             w = 400,
             h = 400,
         }
-        entity_push(edit_grid_entity(grid_pos, grid_dim, state.piece_buffer[state.active_piece_idx].filled))
+	active_piece := state.piece_buffer[state.active_piece_idx]
+        entity_push(edit_grid_entity(grid_pos, grid_dim, active_piece.filled, active_piece.rot_centre))
         click_handler_dim := Dim {
             w = grid_dim.w / 5,
             h = grid_dim.h / 5,

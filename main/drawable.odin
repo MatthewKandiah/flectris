@@ -116,7 +116,9 @@ draw_text_button :: proc(entity: Entity) {
 
 draw_piece_button :: proc(entity: Entity) {
     data := entity.data.(PieceButtonEntityData)
-    draw_grid_cells(entity.pos, entity.dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.piece_data[:], PIECE_BUTTON_Z)
+    grid_dim := GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}
+    draw_grid_cells(entity.pos, entity.dim, grid_dim, data.piece_data[:], PIECE_BUTTON_Z)
+    draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, grid_dim)
 }
 
 draw_piece_button_selected_box :: proc(entity: Entity) {
@@ -212,7 +214,9 @@ draw_game_panel :: proc(entity: Entity) {
 draw_edit_grid :: proc(entity: Entity) {
     data := entity.data.(EditGridEntityData)
 
-    draw_grid_cells(entity.pos, entity.dim, GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, data.piece_data[:], GRID_CELL_Z)
+    grid_dim := GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}
+    draw_grid_cells(entity.pos, entity.dim, grid_dim, data.piece_data[:], GRID_CELL_Z)
+    draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, grid_dim)
 }
 
 draw_number :: proc(n: int, min_drawn_digits: int, pos: Pos, dim: Dim, z: f32) {
