@@ -14,9 +14,9 @@ Game :: struct {
     global: GlobalState,
 }
 
+MAX_PIECES :: 8
 GlobalState :: struct {
     piece_buffer: [MAX_PIECES]Piece,
-    piece_count:  int,
 }
 
 MainMenuState :: struct {}
@@ -33,13 +33,14 @@ initial_edit_state :: proc(game: Game) -> EditState {
 }
 
 LINES_PER_LEVEL :: 20
-MAX_PIECES :: 8
 GridData :: [GRID_WIDTH * GRID_HEIGHT]int
 GameState :: struct {
     has_lost:              bool,
     grid:                  GridData,
-    active_piece:          Piece,
-    next_piece:            Piece,
+    piece_buffer:          [MAX_PIECES]GamePiece,
+    piece_count:           int,
+    active_piece:          GamePiece,
+    next_piece:            GamePiece,
     active_piece_position: GridPos,
     has_active_piece:      bool,
     ticks_until_drop:      int,
@@ -61,9 +62,13 @@ GridDim :: struct {
 PieceData :: [PIECE_WIDTH * PIECE_HEIGHT]int
 
 Piece :: struct {
-    filled:       PieceData,
+    filled:     PieceData,
+    rot_centre: GridPos,
+}
+
+GamePiece :: struct {
+    using piece:  Piece,
     bounding_dim: GridDim,
-    rot_centre:   GridPos,
 }
 
 piece2 :: Piece {
@@ -94,7 +99,6 @@ piece2 :: Piece {
         0,
         0, //
     },
-    bounding_dim = {w = 2, h = 3},
     rot_centre = {x = 0, y = 0},
 }
 
@@ -126,7 +130,6 @@ piece1 :: Piece {
         0,
         0, //
     },
-    bounding_dim = {w = 5, h = 3},
     rot_centre = {x = 1, y = 2},
 }
 
@@ -158,28 +161,96 @@ piece3 :: Piece {
         0,
         0, //
     },
-    bounding_dim = {w = 3, h = 3},
     rot_centre = {x = 4, y = 1},
 }
 
-initial_game_state :: GameState {
-    grid = {},
-    active_piece = {},
-    next_piece = {},
-    active_piece_position = {x = 3, y = 10},
-    has_active_piece = false,
-    ticks_per_drop = 60,
-    ticks_until_drop = 60,
-    has_lost = false,
-    score = 0,
-    level_lines_cleared = 0,
+initial_game_state :: proc(game: Game) -> GameState {
+    piece_buffer, piece_count := get_game_pieces_from_global_state(game.global)
+    return GameState {
+        grid = {},
+        active_piece = {},
+        piece_buffer = piece_buffer,
+        piece_count = piece_count,
+        next_piece = {},
+        active_piece_position = {},
+        has_active_piece = false,
+        ticks_per_drop = 60,
+        ticks_until_drop = 60,
+        has_lost = false,
+        score = 0,
+        level_lines_cleared = 0,
+    }
+}
+
+get_game_pieces_from_global_state :: proc(
+    global: GlobalState,
+) -> (
+    piece_buffer: [MAX_PIECES]GamePiece,
+    piece_count: int,
+) {
+    for global_piece in global.piece_buffer {
+        if piece_is_empty(global_piece) {continue}
+        piece_buffer[piece_count] = game_piece_from_piece(global_piece)
+        piece_count += 1
+    }
+    if piece_count == 0 {panic("Cannot start a game with no pieces")}
+    return
+}
+
+game_piece_from_piece :: proc(piece: Piece) -> (game_piece: GamePiece) {
+    bounding_box_pos, bounding_box_dim := get_piece_bounding_box(piece)
+    game_piece.bounding_dim = bounding_box_dim
+    game_piece.rot_centre = {
+        x = piece.rot_centre.x - bounding_box_pos.x,
+        y = piece.rot_centre.y - bounding_box_pos.y,
+    }
+    for &cell, idx in game_piece.filled {
+        idx_in_original_piece := cast(i32)idx + bounding_box_pos.x + (bounding_box_pos.y * PIECE_WIDTH)
+        if idx_in_original_piece >= PIECE_WIDTH * PIECE_HEIGHT {continue}
+        cell = piece.filled[idx_in_original_piece]
+    }
+    return
+}
+
+get_piece_bounding_box :: proc(piece: Piece) -> (pos: GridPos, dim: GridDim) {
+    x_min, y_min, x_max, y_max: int
+    x_min = max(int)
+    y_min = max(int)
+    for cell, idx in piece.filled {
+        if cell == 0 {continue}
+        x_cell := idx % PIECE_WIDTH
+        y_cell := idx / PIECE_WIDTH
+
+        x_min = min(x_min, x_cell)
+        x_max = max(x_max, x_cell)
+        y_min = min(y_min, y_cell)
+        y_max = max(y_max, y_cell)
+    }
+
+    pos = GridPos {
+        x = cast(i32)x_min,
+        y = cast(i32)y_min,
+    }
+    dim = GridDim {
+        w = cast(i32)(x_max - x_min + 1),
+        h = cast(i32)(y_max - y_min + 1),
+    }
+    fmt.println(pos, dim)
+    return
+}
+
+piece_is_empty :: proc(piece: Piece) -> bool {
+    for cell in piece.filled {
+        if cell != 0 {return false}
+    }
+    return true
 }
 
 init_game :: proc() -> Game {
     return Game {
         screen = .MAIN_MENU,
         state = initial_main_menu_state,
-        global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}}, piece_count = 3},
+        global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}}},
     }
 }
 
@@ -438,6 +509,8 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
             key_event := event.data.(KeyboardEvent)
             if (key_event.type == .Press && key_event.char == .Space) {
                 exit_on_click(game)
+            } else if (key_event.type == .Press && key_event.char == .Escape) {
+                exit_to_menu(game)
             } else if (key_event.type == .Press && key_event.char == .Left) {
                 update_active_piece_position(game_state, -1, 0)
             } else if (key_event.type == .Press && key_event.char == .Right) {
@@ -487,8 +560,8 @@ Screen :: enum {
 
 start_game_on_click :: proc(game: ^Game) {
     game.screen = .GAME
-    game_state := initial_game_state
-    game_state.next_piece = game.global.piece_buffer[rand.int_max(game.global.piece_count)]
+    game_state := initial_game_state(game^)
+    game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
     game.state = game_state
 }
 
@@ -496,17 +569,23 @@ exit_on_click :: proc(_: ^Game) {
     glfw.SetWindowShouldClose(gc.window, true)
 }
 
+exit_to_menu :: proc(game: ^Game) {
+    game.screen = .MAIN_MENU
+}
+
 edit_on_click :: proc(game: ^Game) {
     game.screen = .EDIT
     game.state = initial_edit_state(game^)
 }
 
-edit_cancel_on_click :: proc(_: ^Game) {
-    fmt.println("edit cancel clicked")
+edit_cancel_on_click :: proc(game: ^Game) {
+    game.screen = .MAIN_MENU
 }
 
-edit_exit_on_click :: proc(_: ^Game) {
-    fmt.println("edit exit clicked")
+edit_exit_on_click :: proc(game: ^Game) {
+    edit_state := game.state.(EditState)
+    game.global.piece_buffer = edit_state.piece_buffer
+    game.screen = .MAIN_MENU
 }
 
 edit_piece_on_click :: proc(game: ^Game, n: int) {
@@ -596,7 +675,7 @@ Dir :: enum {
 }
 
 rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
-    updated_piece := Piece {
+    updated_piece := GamePiece {
         bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
     }
     switch dir {
@@ -663,7 +742,7 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     gs.active_piece_position = updated_position
 }
 
-get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: PieceData) {
+get_clockwise_rotated_filled_array :: proc(piece: GamePiece) -> (output: PieceData) {
     // assumes zero initialised output == empty
     for j in 0 ..< piece.bounding_dim.h {
         write_col_idx := j
@@ -676,7 +755,7 @@ get_clockwise_rotated_filled_array :: proc(piece: Piece) -> (output: PieceData) 
     return
 }
 
-get_anticlockwise_rotated_filled_array :: proc(piece: Piece) -> (output: PieceData) {
+get_anticlockwise_rotated_filled_array :: proc(piece: GamePiece) -> (output: PieceData) {
     // assumes zero initialised output == empty
     for j in 0 ..< piece.bounding_dim.h {
         write_col_idx := piece.bounding_dim.h - 1 - j
@@ -753,7 +832,7 @@ game_update :: proc(game: ^Game) {
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
                 game_state.active_piece = game_state.next_piece
-                game_state.next_piece = game.global.piece_buffer[rand.int_max(game.global.piece_count)]
+                game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,
