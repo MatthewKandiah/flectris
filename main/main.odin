@@ -138,6 +138,7 @@ get_proc_address :: proc(p: rawptr, name: cstring) {
 }
 
 mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32) {
+    // TODO-NEXT - handle right button clicks (so we can use them for setting rot centre in edit screen)
     if button != glfw.MOUSE_BUTTON_LEFT {return}
     EVENT_BUFFER[EVENT_BUFFER_COUNT] = Event {
         type = .Mouse,
