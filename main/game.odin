@@ -211,13 +211,13 @@ edit_screen_populate_entities :: proc(game: Game) {
                     y = cancel_button_pos.y + text_button_dim.h + vertical_gap + cast(f32)row * (piece_button_dim.h + vertical_gap),
                 }
                 piece_data := game.state.(EditState).piece_buffer[piece_idx].filled
-		rot_centre := game.state.(EditState).piece_buffer[piece_idx].rot_centre
+                rot_centre := game.state.(EditState).piece_buffer[piece_idx].rot_centre
                 entity_push(
                     piece_button_entity(
                         piece_button_pos,
                         piece_button_dim,
                         piece_data,
-			rot_centre,
+                        rot_centre,
                         edit_piece_on_clicks[piece_idx],
                     ),
                 )
@@ -245,28 +245,33 @@ edit_screen_populate_entities :: proc(game: Game) {
             w = 400,
             h = 400,
         }
-	active_piece := state.piece_buffer[state.active_piece_idx]
+        active_piece := state.piece_buffer[state.active_piece_idx]
         entity_push(edit_grid_entity(grid_pos, grid_dim, active_piece.filled, active_piece.rot_centre))
         click_handler_dim := Dim {
             w = grid_dim.w / PIECE_WIDTH,
             h = grid_dim.h / PIECE_HEIGHT,
         }
-        for col in 0 ..= 4 {
-            for row in 0 ..= 4 {
-                click_handler_pos := Pos {
-                    x = grid_pos.x + (cast(f32)col * click_handler_dim.w),
-                    y = grid_pos.y + (cast(f32)row * click_handler_dim.h),
+        { // left clickable invisible entities
+            for col in 0 ..= 4 {
+                for row in 0 ..= 4 {
+                    click_handler_pos := Pos {
+                        x = grid_pos.x + (cast(f32)col * click_handler_dim.w),
+                        y = grid_pos.y + (cast(f32)row * click_handler_dim.h),
+                    }
+                    click_handler_idx := col + row * PIECE_WIDTH
+                    entity_push(
+                        invisible_click_handler_entity(
+                            click_handler_pos,
+                            click_handler_dim,
+                            edit_grid_button_on_clicks[click_handler_idx],
+                        ),
+                    )
                 }
-                click_handler_idx := col + row * PIECE_WIDTH
-                entity_push(
-                    invisible_click_handler_entity(
-                        click_handler_pos,
-                        click_handler_dim,
-                        edit_grid_button_on_clicks[click_handler_idx],
-                    ),
-                )
             }
         }
+	{ // right clickable invisible entities
+	    // TODO-NEXT
+	}
     }
 }
 
@@ -334,7 +339,7 @@ handle_mouse_event :: proc(game: ^Game, mouse_event: MouseEvent) {
     if mouse_event.type != .Press {return}
     for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
         if mouse_event.button == .Left && !entity.clickable {continue}
-	if mouse_event.button == .Right && !entity.right_clickable {continue}
+        if mouse_event.button == .Right && !entity.right_clickable {continue}
         if !is_hovered(entity.pos, entity.dim) {continue}
         if entity.on_click == nil {unreachable()}
         entity.on_click(game)
