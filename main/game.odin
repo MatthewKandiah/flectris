@@ -4,252 +4,50 @@ import "core:fmt"
 import "core:math/rand"
 import "vendor:glfw"
 
+GRID_WIDTH :: 10
+GRID_HEIGHT :: 20
+
+PIECE_WIDTH :: 5
+PIECE_HEIGHT :: 5
+MAX_PIECES :: 8
+
+LINES_PER_LEVEL :: 20
+
+GridData :: [GRID_WIDTH * GRID_HEIGHT]int
+PieceData :: [PIECE_WIDTH * PIECE_HEIGHT]int
+
 Game :: struct {
     screen: Screen,
     state:  union {
-        MainMenuState,
         GameState,
         EditState,
     },
     global: GlobalState,
 }
 
-MAX_PIECES :: 8
-GlobalState :: struct {
-    piece_buffer: [MAX_PIECES]Piece,
-}
-
-MainMenuState :: struct {}
-
-initial_main_menu_state :: MainMenuState{}
-
-EditState :: struct {
-    piece_buffer:     [MAX_PIECES]Piece,
-    active_piece_idx: int,
-}
-
-initial_edit_state :: proc(game: Game) -> EditState {
-    return EditState{piece_buffer = game.global.piece_buffer, active_piece_idx = 0}
-}
-
-LINES_PER_LEVEL :: 20
-GridData :: [GRID_WIDTH * GRID_HEIGHT]int
-GameState :: struct {
-    has_lost:              bool,
-    grid:                  GridData,
-    piece_buffer:          [MAX_PIECES]GamePiece,
-    piece_count:           int,
-    active_piece:          GamePiece,
-    next_piece:            GamePiece,
-    active_piece_position: GridPos,
-    has_active_piece:      bool,
-    ticks_until_drop:      int,
-    ticks_per_drop:        int,
-    score:                 int,
-    level_lines_cleared:   int,
-}
-
-GridPos :: struct {
-    x: i32,
-    y: i32,
-}
-
-GridDim :: struct {
-    w: i32,
-    h: i32,
-}
-
-PieceData :: [PIECE_WIDTH * PIECE_HEIGHT]int
-
-Piece :: struct {
-    filled:     PieceData,
-    rot_centre: GridPos,
-}
-
-GamePiece :: struct {
-    using piece:  Piece,
-    bounding_dim: GridDim,
-}
-
-piece2 :: Piece {
-    filled = {
-        2,
-        2,
-        0,
-        0,
-        0, //
-        2,
-        2,
-        0,
-        0,
-        0, //
-        2,
-        2,
-        0,
-        0,
-        0, //
-        0,
-        0,
-        0,
-        0,
-        0, //
-        0,
-        0,
-        0,
-        0,
-        0, //
-    },
-    rot_centre = {x = 0, y = 0},
-}
-
-piece1 :: Piece {
-    filled = {
-        1,
-        1,
-        1,
-        1,
-        1, //
-        1,
-        1,
-        1,
-        1,
-        1, //
-        1,
-        1,
-        1,
-        1,
-        0, //
-        0,
-        0,
-        0,
-        0,
-        0, //
-        0,
-        0,
-        0,
-        0,
-        0, //
-    },
-    rot_centre = {x = 1, y = 2},
-}
-
-piece3 :: Piece {
-    filled = {
-        3,
-        3,
-        3,
-        0,
-        0, //
-        3,
-        3,
-        3,
-        0,
-        0, //
-        3,
-        3,
-        3,
-        0,
-        0, //
-        0,
-        0,
-        0,
-        0,
-        0, //
-        0,
-        0,
-        0,
-        0,
-        0, //
-    },
-    rot_centre = {x = 4, y = 1},
-}
-
-initial_game_state :: proc(game: Game) -> GameState {
-    piece_buffer, piece_count := get_game_pieces_from_global_state(game.global)
-    return GameState {
-        grid = {},
-        active_piece = {},
-        piece_buffer = piece_buffer,
-        piece_count = piece_count,
-        next_piece = {},
-        active_piece_position = {},
-        has_active_piece = false,
-        ticks_per_drop = 60,
-        ticks_until_drop = 60,
-        has_lost = false,
-        score = 0,
-        level_lines_cleared = 0,
-    }
-}
-
-get_game_pieces_from_global_state :: proc(
-    global: GlobalState,
-) -> (
-    piece_buffer: [MAX_PIECES]GamePiece,
-    piece_count: int,
-) {
-    for global_piece in global.piece_buffer {
-        if piece_is_empty(global_piece) {continue}
-        piece_buffer[piece_count] = game_piece_from_piece(global_piece)
-        piece_count += 1
-    }
-    if piece_count == 0 {panic("Cannot start a game with no pieces")}
-    return
-}
-
-game_piece_from_piece :: proc(piece: Piece) -> (game_piece: GamePiece) {
-    bounding_box_pos, bounding_box_dim := get_piece_bounding_box(piece)
-    game_piece.bounding_dim = bounding_box_dim
-    game_piece.rot_centre = {
-        x = piece.rot_centre.x - bounding_box_pos.x,
-        y = piece.rot_centre.y - bounding_box_pos.y,
-    }
-    for &cell, idx in game_piece.filled {
-        idx_in_original_piece := cast(i32)idx + bounding_box_pos.x + (bounding_box_pos.y * PIECE_WIDTH)
-        if idx_in_original_piece >= PIECE_WIDTH * PIECE_HEIGHT {continue}
-        cell = piece.filled[idx_in_original_piece]
-    }
-    return
-}
-
-get_piece_bounding_box :: proc(piece: Piece) -> (pos: GridPos, dim: GridDim) {
-    x_min, y_min, x_max, y_max: int
-    x_min = max(int)
-    y_min = max(int)
-    for cell, idx in piece.filled {
-        if cell == 0 {continue}
-        x_cell := idx % PIECE_WIDTH
-        y_cell := idx / PIECE_WIDTH
-
-        x_min = min(x_min, x_cell)
-        x_max = max(x_max, x_cell)
-        y_min = min(y_min, y_cell)
-        y_max = max(y_max, y_cell)
-    }
-
-    pos = GridPos {
-        x = cast(i32)x_min,
-        y = cast(i32)y_min,
-    }
-    dim = GridDim {
-        w = cast(i32)(x_max - x_min + 1),
-        h = cast(i32)(y_max - y_min + 1),
-    }
-    return
-}
-
-piece_is_empty :: proc(piece: Piece) -> bool {
-    for cell in piece.filled {
-        if cell != 0 {return false}
-    }
-    return true
+Screen :: enum {
+    MAIN_MENU,
+    GAME,
+    EDIT,
 }
 
 init_game :: proc() -> Game {
     return Game {
         screen = .MAIN_MENU,
-        state = initial_main_menu_state,
+        state = {},
         global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}}},
+    }
+}
+
+game_populate_entities :: proc(game: Game) {
+    ENTITY_COUNT = 0
+    switch game.screen {
+    case .GAME:
+        game_screen_populate_entities(game)
+    case .MAIN_MENU:
+        main_menu_screen_populate_entities(game)
+    case .EDIT:
+        edit_screen_populate_entities(game)
     }
 }
 
@@ -450,8 +248,8 @@ edit_screen_populate_entities :: proc(game: Game) {
 	active_piece := state.piece_buffer[state.active_piece_idx]
         entity_push(edit_grid_entity(grid_pos, grid_dim, active_piece.filled, active_piece.rot_centre))
         click_handler_dim := Dim {
-            w = grid_dim.w / 5,
-            h = grid_dim.h / 5,
+            w = grid_dim.w / PIECE_WIDTH,
+            h = grid_dim.h / PIECE_HEIGHT,
         }
         for col in 0 ..= 4 {
             for row in 0 ..= 4 {
@@ -459,7 +257,7 @@ edit_screen_populate_entities :: proc(game: Game) {
                     x = grid_pos.x + (cast(f32)col * click_handler_dim.w),
                     y = grid_pos.y + (cast(f32)row * click_handler_dim.h),
                 }
-                click_handler_idx := col + row * 5
+                click_handler_idx := col + row * PIECE_WIDTH
                 entity_push(
                     invisible_click_handler_entity(
                         click_handler_pos,
@@ -472,15 +270,14 @@ edit_screen_populate_entities :: proc(game: Game) {
     }
 }
 
-game_populate_entities :: proc(game: Game) {
-    ENTITY_COUNT = 0
+game_handle_event :: proc(game: ^Game, event: Event) {
     switch game.screen {
-    case .GAME:
-        game_screen_populate_entities(game)
     case .MAIN_MENU:
-        main_menu_screen_populate_entities(game)
+        main_menu_screen_handle_event(game, event)
     case .EDIT:
-        edit_screen_populate_entities(game)
+        edit_screen_handle_event(game, event)
+    case .GAME:
+        game_screen_handle_event(game, event)
     }
 }
 
@@ -541,23 +338,6 @@ handle_mouse_event :: proc(game: ^Game, mouse_event: MouseEvent) {
         if entity.on_click == nil {unreachable()}
         entity.on_click(game)
     }
-}
-
-game_handle_event :: proc(game: ^Game, event: Event) {
-    switch game.screen {
-    case .MAIN_MENU:
-        main_menu_screen_handle_event(game, event)
-    case .EDIT:
-        edit_screen_handle_event(game, event)
-    case .GAME:
-        game_screen_handle_event(game, event)
-    }
-}
-
-Screen :: enum {
-    MAIN_MENU,
-    GAME,
-    EDIT,
 }
 
 start_game_on_click :: proc(game: ^Game) {
@@ -671,156 +451,6 @@ edit_grid_button_on_clicks := []proc(game: ^Game) {
     edit_grid_button24_on_click,
 }
 
-Dir :: enum {
-    CLOCKWISE,
-    ANTICLOCKWISE,
-}
-
-rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
-    updated_piece := GamePiece {
-        bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
-    }
-    switch dir {
-    case .CLOCKWISE:
-        {
-            updated_piece.filled = get_clockwise_rotated_filled_array(gs.active_piece)
-        }
-    case .ANTICLOCKWISE:
-        {
-            updated_piece.filled = get_anticlockwise_rotated_filled_array(gs.active_piece)
-        }
-    }
-
-    updated_position: GridPos
-    switch dir {
-    case .CLOCKWISE:
-        {
-            updated_position = GridPos {
-                x = gs.active_piece_position.x + gs.active_piece.rot_centre.x - gs.active_piece.rot_centre.y,
-                y = gs.active_piece_position.y + gs.active_piece.rot_centre.x + gs.active_piece.rot_centre.y - gs.active_piece.bounding_dim.w,
-            }
-        }
-    case .ANTICLOCKWISE:
-        {
-            updated_position = GridPos {
-                x = gs.active_piece_position.x + gs.active_piece.rot_centre.x + gs.active_piece.rot_centre.y - gs.active_piece.bounding_dim.h,
-                y = gs.active_piece_position.y + gs.active_piece.rot_centre.y - gs.active_piece.rot_centre.x,
-            }
-        }
-    }
-    updated_piece.rot_centre = GridPos {
-        x = gs.active_piece_position.x + gs.active_piece.rot_centre.x - updated_position.x,
-        y = gs.active_piece_position.y + gs.active_piece.rot_centre.y - updated_position.y,
-    }
-
-    // rotation centre should not be displaced by rotation
-    assert(
-        gs.active_piece_position.x + gs.active_piece.rot_centre.x == updated_position.x + updated_piece.rot_centre.x,
-    )
-    assert(
-        gs.active_piece_position.y + gs.active_piece.rot_centre.y == updated_position.y + updated_piece.rot_centre.y,
-    )
-
-    // check you stay in grid
-    if updated_position.x < 0 {updated_position.x = 0}
-    if updated_position.x + updated_piece.bounding_dim.w >
-       GRID_WIDTH {updated_position.x = GRID_WIDTH - updated_piece.bounding_dim.w}
-    if updated_position.y < 0 {
-        updated_position.y = 0
-    }
-    // check you don't overlap existing pieces
-    for val, idx in updated_piece.filled {
-        if val == 0 {continue}
-        x := updated_position.x + (cast(i32)idx % PIECE_WIDTH)
-        y := updated_position.y + (cast(i32)idx / PIECE_WIDTH)
-        if y >= GRID_HEIGHT {continue}
-
-        if gs.grid[y * GRID_WIDTH + x] != 0 {
-            return // don't update
-        }
-    }
-
-    gs.active_piece = updated_piece
-    gs.active_piece_position = updated_position
-}
-
-get_clockwise_rotated_filled_array :: proc(piece: GamePiece) -> (output: PieceData) {
-    // assumes zero initialised output == empty
-    for j in 0 ..< piece.bounding_dim.h {
-        write_col_idx := j
-        for i in 0 ..< piece.bounding_dim.w {
-            val := piece.filled[i + j * PIECE_WIDTH]
-            write_row_idx := piece.bounding_dim.w - 1 - i
-            output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
-        }
-    }
-    return
-}
-
-get_anticlockwise_rotated_filled_array :: proc(piece: GamePiece) -> (output: PieceData) {
-    // assumes zero initialised output == empty
-    for j in 0 ..< piece.bounding_dim.h {
-        write_col_idx := piece.bounding_dim.h - 1 - j
-        for i in 0 ..< piece.bounding_dim.w {
-            val := piece.filled[i + j * PIECE_WIDTH]
-            write_row_idx := i
-            output[write_col_idx + write_row_idx * PIECE_WIDTH] = val
-        }
-    }
-    return
-}
-
-update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (collided_bottom: bool) {
-    assert(abs(delta_x) <= 1 && abs(delta_y) <= 1, "larger jumps not currently supported")
-    if !gs.has_active_piece {return}
-
-    updated_pos := GridPos {
-        x = gs.active_piece_position.x + delta_x,
-        y = gs.active_piece_position.y + delta_y,
-    }
-
-    // check you stay in grid
-    if updated_pos.x < 0 {updated_pos.x = 0}
-    if updated_pos.x + gs.active_piece.bounding_dim.w >
-       GRID_WIDTH {updated_pos.x = GRID_WIDTH - gs.active_piece.bounding_dim.w}
-    if updated_pos.y < 0 {
-        updated_pos.y = 0
-        collided_bottom = true
-    }
-
-    // check you don't overlap existing pieces
-    for val, idx in gs.active_piece.filled {
-        if val == 0 {continue}
-        x := updated_pos.x + (cast(i32)idx % PIECE_WIDTH)
-        y := updated_pos.y + (cast(i32)idx / PIECE_WIDTH)
-        if y >= GRID_HEIGHT {continue}
-
-        if gs.grid[y * GRID_WIDTH + x] != 0 {
-            updated_pos = gs.active_piece_position
-            if delta_y < 0 {
-                collided_bottom = true
-            }
-        }
-    }
-
-    gs.active_piece_position = updated_pos
-    return collided_bottom
-}
-
-deactivate_piece :: proc(gs: ^GameState) {
-    gs.has_active_piece = false
-    for val, idx in gs.active_piece.filled {
-        if val == 0 {continue}
-        x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
-        y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
-        if y >= GRID_HEIGHT {
-            gs.has_lost = true
-        } else {
-            gs.grid[y * GRID_WIDTH + x] = val
-        }
-    }
-}
-
 game_update :: proc(game: ^Game) {
     switch game.screen {
     case .MAIN_MENU:
@@ -891,35 +521,6 @@ game_update :: proc(game: ^Game) {
             }
         }
     }
-}
-
-update_score :: proc(gs: ^GameState, filled_line_count: int) {
-    switch filled_line_count {
-    case min(int) ..= 0:
-        fallthrough
-    case 6 ..= max(int):
-        return
-    case 1:
-        gs.score += 1
-    case 2:
-        gs.score += 2
-    case 3:
-        gs.score += 5
-    case 4:
-        gs.score += 20
-    case 5:
-        gs.score += 100
-    }
-}
-
-grid_row_is_filled :: proc(gs: ^GameState, row_idx: int) -> bool {
-    assert(row_idx >= 0 || row_idx < GRID_HEIGHT, "row must be inside grid")
-    grid_idx := row_idx * GRID_WIDTH
-    row := gs.grid[grid_idx:grid_idx + GRID_WIDTH]
-    for val in row {
-        if val == 0 {return false}
-    }
-    return true
 }
 
 grid_removed_row_count :: proc(row_idx: int, filled_line_idxs: []int) -> (rm_rows_count: int) {

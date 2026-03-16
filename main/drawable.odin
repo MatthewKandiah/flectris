@@ -2,7 +2,6 @@ package main
 
 import "core:fmt"
 import "vendor:glfw"
-import "vendor:vulkan"
 
 BACKGROUND_Z :: 0
 GRID_BACKGROUND_Z :: 0.1
@@ -22,58 +21,6 @@ Drawable :: struct {
     texture_data:    TextureData,
     override_colour: bool,
     colour:          Colour,
-}
-
-Colour :: struct {
-    r, g, b: f32,
-}
-
-RED :: Colour {
-    r = 1,
-    g = 0,
-    b = 0,
-}
-GREEN :: Colour {
-    r = 0,
-    g = 1,
-    b = 0,
-}
-BLUE :: Colour {
-    r = 0,
-    g = 0,
-    b = 1,
-}
-BLACK :: Colour {
-    r = 0,
-    g = 0,
-    b = 0,
-}
-WHITE :: Colour {
-    r = 1,
-    g = 1,
-    b = 1,
-}
-GREY :: Colour {
-    r = 0.3,
-    g = 0.3,
-    b = 0.3,
-}
-DARK_GREY :: Colour {
-    r = 0.1,
-    g = 0.1,
-    b = 0.1,
-}
-
-Pos :: struct {
-    x, y: f32,
-}
-
-Dim :: struct {
-    w, h: f32,
-}
-
-extent_to_dim :: proc(extent: vulkan.Extent2D) -> Dim {
-    return Dim{w = cast(f32)extent.width, h = cast(f32)extent.height}
 }
 
 TextureData :: struct {
@@ -105,118 +52,6 @@ draw_entity :: proc(entity: Entity) {
     case .EditGrid:
 	draw_edit_grid(entity)
     }
-}
-
-draw_text_button :: proc(entity: Entity) {
-    data := entity.data.(TextButtonEntityData)
-    colour := RED if data.hovered else BLUE
-    draw_rect(colour, entity.pos, entity.dim, UI_TEXT_BACKGROUND_Z)
-    draw_string(data.str, entity.pos, entity.dim, UI_TEXT_Z)
-}
-
-draw_piece_button :: proc(entity: Entity) {
-    data := entity.data.(PieceButtonEntityData)
-    grid_dim := GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}
-    draw_grid_cells(entity.pos, entity.dim, grid_dim, data.piece_data[:], PIECE_BUTTON_Z)
-    draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, grid_dim)
-}
-
-draw_piece_button_selected_box :: proc(entity: Entity) {
-    draw_rect(GREY, entity.pos, entity.dim, PIECE_BUTTON_SELECTED_BOX_Z)
-}
-
-draw_grid :: proc(entity: Entity) {
-    data := entity.data.(GridEntityData)
-    draw_grid_cells(entity.pos, entity.dim, GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, data.cells[:], GRID_CELL_Z)
-    if data.has_active_piece {
-        draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, GridDim{w = GRID_WIDTH, h = GRID_HEIGHT})
-    }
-}
-
-draw_grid_rot_centre :: proc(screen_pos: Pos, screen_dim: Dim, rot_centre: GridPos, grid_dim: GridDim) {
-    if rot_centre.x > grid_dim.w {return}
-    if rot_centre.x < 0 {return}
-    if rot_centre.y > grid_dim.h {return}
-    if rot_centre.y < 0 {return}
-
-    cell_dim := Dim {
-        w = screen_dim.w / cast(f32)grid_dim.w,
-        h = screen_dim.h / cast(f32)grid_dim.h,
-    }
-    texture_data := get_cell_sprite_texture_data(5)
-    rot_centre_scale: f32 = 5
-    rot_centre_dim := Dim {
-        w = cell_dim.w / rot_centre_scale,
-        h = cell_dim.h / rot_centre_scale,
-    }
-    rot_centre_pos := Pos {
-        x = screen_pos.x + (cast(f32)rot_centre.x * cell_dim.w) - (rot_centre_dim.w / 2),
-        y = screen_pos.y + (cast(f32)rot_centre.y * cell_dim.h) - (rot_centre_dim.h / 2),
-    }
-    draw_sprite(texture_data, rot_centre_pos, rot_centre_dim, 1, false, {})
-}
-
-draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cells: []int, z: f32) {
-    cell_dim := Dim {
-        w = screen_dim.w / cast(f32)grid_dim.w,
-        h = screen_dim.h / cast(f32)grid_dim.h,
-    }
-    empty_texture_data := get_cell_sprite_texture_data(6)
-    empty_debug_colour := BLUE
-    filled_texture_data := get_cell_sprite_texture_data(7)
-    filled_debug_colour := RED
-    for value, idx in cells {
-        col_idx := idx % cast(int)grid_dim.w
-        row_idx := idx / cast(int)grid_dim.w
-        cell_pos := Pos {
-            x = screen_pos.x + cast(f32)col_idx * cell_dim.w,
-            y = screen_pos.y + cast(f32)row_idx * cell_dim.h,
-        }
-        draw_sprite(get_cell_sprite_texture_data(value), cell_pos, cell_dim, z, false, {})
-    }
-}
-
-draw_game_panel :: proc(entity: Entity) {
-    data := entity.data.(GamePanelEntityData)
-    panel_top_bot_margin :: 10
-    panel_left_right_margin :: 5
-
-    score_dim := Dim {
-        w = entity.dim.w - 2 * panel_left_right_margin,
-        h = entity.dim.w / 5,
-    }
-    score_pos := Pos {
-        x = entity.pos.x + panel_left_right_margin,
-        y = entity.pos.y + entity.dim.h - panel_top_bot_margin - score_dim.h,
-    }
-
-    next_piece_size := entity.dim.w - 2 * panel_left_right_margin
-    next_piece_dim := Dim {
-        w = next_piece_size,
-        h = next_piece_size,
-    }
-    next_piece_pos := Pos {
-        x = entity.pos.x + panel_left_right_margin,
-        y = score_pos.y - panel_top_bot_margin - next_piece_dim.h,
-    }
-
-    draw_rect(DARK_GREY, entity.pos, entity.dim, GAME_PANEL_Z)
-    draw_number(data.score, 7, score_pos, score_dim, UI_TEXT_Z)
-    draw_grid_cells(
-        next_piece_pos,
-        next_piece_dim,
-        GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
-        data.next_piece.filled[:],
-        UI_TEXT_Z,
-    )
-}
-
-draw_edit_grid :: proc(entity: Entity) {
-    data := entity.data.(EditGridEntityData)
-
-    grid_dim := GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}
-    draw_grid_cells(entity.pos, entity.dim, grid_dim, data.piece_data[:], GRID_CELL_Z)
-    draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, grid_dim)
 }
 
 draw_number :: proc(n: int, min_drawn_digits: int, pos: Pos, dim: Dim, z: f32) {
