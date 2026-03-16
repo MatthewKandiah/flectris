@@ -5,8 +5,8 @@ EVENT_BUFFER_COUNT := 0
 EVENT_BUFFER := [EVENT_BUFFER_SIZE]Event{}
 
 Event :: struct {
-    type: EventSource,
-    data: Foo
+    source: EventSource,
+    data: EventData,
 }
 
 EventSource :: enum {
@@ -19,7 +19,7 @@ EventType :: enum {
     Release
 }
 
-Foo :: union {
+EventData :: union {
     KeyboardEvent,
     MouseEvent,
 }
@@ -49,4 +49,9 @@ MouseEvent :: struct {
     pos: Pos,
     type: EventType,
     button: MouseButton,
+}
+
+event_push :: proc(event: Event) {
+    EVENT_BUFFER[EVENT_BUFFER_COUNT] = event
+    EVENT_BUFFER_COUNT += 1
 }

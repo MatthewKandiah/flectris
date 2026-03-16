@@ -282,7 +282,7 @@ game_handle_event :: proc(game: ^Game, event: Event) {
 }
 
 main_menu_screen_handle_event :: proc(game: ^Game, event: Event) {
-    switch event.type {
+    switch event.source {
     case .Keyboard:
         return
 
@@ -292,7 +292,7 @@ main_menu_screen_handle_event :: proc(game: ^Game, event: Event) {
 }
 
 edit_screen_handle_event :: proc(game: ^Game, event: Event) {
-    switch event.type {
+    switch event.source {
     case .Keyboard:
         return
     case .Mouse:
@@ -302,7 +302,7 @@ edit_screen_handle_event :: proc(game: ^Game, event: Event) {
 
 game_screen_handle_event :: proc(game: ^Game, event: Event) {
     game_state := &game.state.(GameState)
-    switch event.type {
+    switch event.source {
     case .Keyboard:
         {
             key_event := event.data.(KeyboardEvent)
@@ -331,6 +331,7 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
 }
 
 handle_mouse_event :: proc(game: ^Game, mouse_event: MouseEvent) {
+    fmt.println(mouse_event)
     if mouse_event.type != .Press {return}
     for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
         if !entity.clickable {continue}
