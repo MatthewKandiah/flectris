@@ -6,7 +6,6 @@ Tetris but you can pick your tileset.
 
 ## Short term plan - Piece Editor
 - make right clicking intersection in the edit grid set the rotation centre
-- save and use in game! (trickier than it sounds because we need to update bounding box to get game logic working properly)
 - positioning and sizing of edit grid
 
 ## Medium term plans
@@ -14,3 +13,4 @@ Tetris but you can pick your tileset.
 - save game configs and pick from list
 - game sounds
 - save move history and view / validate replay
+- rebind controls
