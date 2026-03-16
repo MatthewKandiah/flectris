@@ -331,10 +331,10 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
 }
 
 handle_mouse_event :: proc(game: ^Game, mouse_event: MouseEvent) {
-    fmt.println(mouse_event)
     if mouse_event.type != .Press {return}
     for entity in ENTITY_BUFFER[:ENTITY_COUNT] {
-        if !entity.clickable {continue}
+        if mouse_event.button == .Left && !entity.clickable {continue}
+	if mouse_event.button == .Right && !entity.right_clickable {continue}
         if !is_hovered(entity.pos, entity.dim) {continue}
         if entity.on_click == nil {unreachable()}
         entity.on_click(game)

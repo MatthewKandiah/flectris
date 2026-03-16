@@ -10,7 +10,8 @@ Entity :: struct {
     pos:       Pos,
     dim:       Dim,
     clickable: bool,
-    on_click:  proc(_: ^Game),
+    right_clickable: bool,
+    on_click:  proc(^Game),
     type:      EntityType,
     data:      EntityData,
 }
