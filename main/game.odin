@@ -251,7 +251,7 @@ edit_screen_populate_entities :: proc(game: Game) {
             w = grid_dim.w / PIECE_WIDTH,
             h = grid_dim.h / PIECE_HEIGHT,
         }
-        { // left clickable invisible entities
+        {     // left clickable invisible entities
             for col in 0 ..= 4 {
                 for row in 0 ..= 4 {
                     click_handler_pos := Pos {
@@ -264,14 +264,31 @@ edit_screen_populate_entities :: proc(game: Game) {
                             click_handler_pos,
                             click_handler_dim,
                             edit_grid_button_on_clicks[click_handler_idx],
+                            .Left,
                         ),
                     )
                 }
             }
         }
-	{ // right clickable invisible entities
-	    // TODO-NEXT
-	}
+        {     // right clickable invisible entities
+            for col in 0 ..= 5 {
+                for row in 0 ..= 5 {
+                    click_handler_pos := Pos {
+                        x = grid_pos.x + (cast(f32)col * click_handler_dim.w) - click_handler_dim.w / 2,
+                        y = grid_pos.y + (cast(f32)row * click_handler_dim.h) - click_handler_dim.h / 2,
+                    }
+                    click_handler_idx := col + row * (PIECE_WIDTH + 1)
+                    entity_push(
+                        invisible_click_handler_entity(
+                            click_handler_pos,
+                            click_handler_dim,
+                            edit_grid_intersection_on_clicks[click_handler_idx],
+                            .Right,
+                        ),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -455,6 +472,84 @@ edit_grid_button_on_clicks := []proc(game: ^Game) {
     edit_grid_button22_on_click,
     edit_grid_button23_on_click,
     edit_grid_button24_on_click,
+}
+
+edit_grid_intersection_on_click :: proc(game: ^Game, n: int) {
+    fmt.println("clicked", n)
+}
+edit_grid_intersection0_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 0)}
+edit_grid_intersection1_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 1)}
+edit_grid_intersection2_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 2)}
+edit_grid_intersection3_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 3)}
+edit_grid_intersection4_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 4)}
+edit_grid_intersection5_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 5)}
+edit_grid_intersection6_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 6)}
+edit_grid_intersection7_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 7)}
+edit_grid_intersection8_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 8)}
+edit_grid_intersection9_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 9)}
+edit_grid_intersection10_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 10)}
+edit_grid_intersection11_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 11)}
+edit_grid_intersection12_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 12)}
+edit_grid_intersection13_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 13)}
+edit_grid_intersection14_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 14)}
+edit_grid_intersection15_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 15)}
+edit_grid_intersection16_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 16)}
+edit_grid_intersection17_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 17)}
+edit_grid_intersection18_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 18)}
+edit_grid_intersection19_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 19)}
+edit_grid_intersection20_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 20)}
+edit_grid_intersection21_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 21)}
+edit_grid_intersection22_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 22)}
+edit_grid_intersection23_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 23)}
+edit_grid_intersection24_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 24)}
+edit_grid_intersection25_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 25)}
+edit_grid_intersection26_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 26)}
+edit_grid_intersection27_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 27)}
+edit_grid_intersection28_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 28)}
+edit_grid_intersection29_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 29)}
+edit_grid_intersection30_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 30)}
+edit_grid_intersection31_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 31)}
+edit_grid_intersection32_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 32)}
+edit_grid_intersection33_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 33)}
+edit_grid_intersection34_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 34)}
+edit_grid_intersection35_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 35)}
+edit_grid_intersection_on_clicks := []proc(_: ^Game) {
+    edit_grid_intersection0_on_click,
+    edit_grid_intersection1_on_click,
+    edit_grid_intersection2_on_click,
+    edit_grid_intersection3_on_click,
+    edit_grid_intersection4_on_click,
+    edit_grid_intersection5_on_click,
+    edit_grid_intersection6_on_click,
+    edit_grid_intersection7_on_click,
+    edit_grid_intersection8_on_click,
+    edit_grid_intersection9_on_click,
+    edit_grid_intersection10_on_click,
+    edit_grid_intersection11_on_click,
+    edit_grid_intersection12_on_click,
+    edit_grid_intersection13_on_click,
+    edit_grid_intersection14_on_click,
+    edit_grid_intersection15_on_click,
+    edit_grid_intersection16_on_click,
+    edit_grid_intersection17_on_click,
+    edit_grid_intersection18_on_click,
+    edit_grid_intersection19_on_click,
+    edit_grid_intersection20_on_click,
+    edit_grid_intersection21_on_click,
+    edit_grid_intersection22_on_click,
+    edit_grid_intersection23_on_click,
+    edit_grid_intersection24_on_click,
+    edit_grid_intersection25_on_click,
+    edit_grid_intersection26_on_click,
+    edit_grid_intersection27_on_click,
+    edit_grid_intersection28_on_click,
+    edit_grid_intersection29_on_click,
+    edit_grid_intersection30_on_click,
+    edit_grid_intersection31_on_click,
+    edit_grid_intersection32_on_click,
+    edit_grid_intersection33_on_click,
+    edit_grid_intersection34_on_click,
+    edit_grid_intersection35_on_click,
 }
 
 game_update :: proc(game: ^Game) {
