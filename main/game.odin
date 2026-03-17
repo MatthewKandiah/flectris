@@ -35,7 +35,7 @@ init_game :: proc() -> Game {
     return Game {
         screen = .MAIN_MENU,
         state = {},
-        global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, {}, {}, {}, {}, {}}},
+        global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, piece4, piece5, piece6, piece7, {}}},
     }
 }
 
