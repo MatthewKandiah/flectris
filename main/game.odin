@@ -474,8 +474,13 @@ edit_grid_button_on_clicks := []proc(game: ^Game) {
     edit_grid_button24_on_click,
 }
 
-edit_grid_intersection_on_click :: proc(game: ^Game, n: int) {
-    fmt.println("clicked", n)
+edit_grid_intersection_on_click :: proc(game: ^Game, n: i32) {
+    state := &game.state.(EditState)
+    new_value := GridPos{
+	x = n % (PIECE_WIDTH + 1),
+	y = n / (PIECE_WIDTH + 1),
+    }
+    state.piece_buffer[state.active_piece_idx].rot_centre = new_value
 }
 edit_grid_intersection0_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 0)}
 edit_grid_intersection1_on_click :: proc(game: ^Game) {edit_grid_intersection_on_click(game, 1)}
