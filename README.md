@@ -14,3 +14,4 @@ Tetris but you can pick your tileset.
 - game sounds
 - save move history and view / validate replay
 - rebind controls
+- "save" piece in game
