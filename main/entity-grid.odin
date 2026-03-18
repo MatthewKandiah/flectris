@@ -1,5 +1,7 @@
 package main
 
+import "core:fmt"
+
 GridEntityData :: struct {
     cells:            GridData,
     rot_centre:       GridPos,
@@ -44,7 +46,7 @@ grid_entity :: proc(
 edit_grid_entity :: proc(pos: Pos, dim: Dim, piece_data: PieceData, rot_centre: GridPos) -> Entity {
     data := EditGridEntityData {
         piece_data = piece_data,
-	rot_centre = rot_centre,
+        rot_centre = rot_centre,
     }
     return Entity{pos = pos, dim = dim, type = .EditGrid, data = data}
 }
@@ -60,7 +62,10 @@ draw_grid :: proc(entity: Entity) {
 draw_edit_grid :: proc(entity: Entity) {
     data := entity.data.(EditGridEntityData)
 
-    grid_dim := GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}
+    grid_dim := GridDim {
+        w = PIECE_WIDTH,
+        h = PIECE_HEIGHT,
+    }
     draw_grid_cells(entity.pos, entity.dim, grid_dim, data.piece_data[:], GRID_CELL_Z)
     draw_grid_rot_centre(entity.pos, entity.dim, data.rot_centre, grid_dim)
 }
@@ -109,3 +114,38 @@ draw_grid_cells :: proc(screen_pos: Pos, screen_dim: Dim, grid_dim: GridDim, cel
     }
 }
 
+get_fitted_grid_pos_dim :: proc(input_grid_dim: GridDim, panel_width: f32) -> (pos: Pos, dim: Dim) {
+    grid_available_space := Dim {
+        w = cast(f32)gc.surface_extent.width - panel_width,
+        h = cast(f32)gc.surface_extent.height,
+    }
+    grid_w_over_h := cast(f32)input_grid_dim.w / cast(f32)input_grid_dim.h
+    grid_available_space_w_over_h := grid_available_space.w / grid_available_space.h
+    if (grid_w_over_h > grid_available_space_w_over_h) {
+        // grid fills available width
+        height := grid_available_space.w / grid_w_over_h
+        dim = {
+            w = grid_available_space.w,
+            h = height,
+        }
+        unfilled_height := grid_available_space.h - height
+        pos = {
+            x = 0,
+            y = unfilled_height / 2,
+        }
+    } else {
+        // grid fills available height
+        width := grid_available_space.h * grid_w_over_h
+        dim = {
+            w = width,
+            h = grid_available_space.h,
+        }
+        unfilled_width := grid_available_space.w - width
+        pos = {
+            x = unfilled_width / 2,
+            y = 0,
+        }
+    }
+
+    return
+}

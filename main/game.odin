@@ -65,40 +65,7 @@ game_screen_populate_entities :: proc(game: Game) {
 
     entity_push(game_panel_entity(panel_pos, panel_dim, game_state.score, game_state.next_piece))
 
-    grid_available_space := Dim {
-        w = cast(f32)gc.surface_extent.width - panel_dim.w,
-        h = cast(f32)gc.surface_extent.height,
-    }
-    grid_w_over_h := cast(f32)GRID_WIDTH / cast(f32)GRID_HEIGHT
-    grid_available_space_w_over_h := grid_available_space.w / grid_available_space.h
-
-    grid_pos: Pos
-    grid_dim: Dim
-    if (grid_w_over_h > grid_available_space_w_over_h) {
-        // grid fills available width
-        height := grid_available_space.w / grid_w_over_h
-        grid_dim = {
-            w = grid_available_space.w,
-            h = height,
-        }
-        unfilled_height := grid_available_space.h - height
-        grid_pos = {
-            x = 0,
-            y = unfilled_height / 2,
-        }
-    } else {
-        // grid fills available height
-        width := grid_available_space.h * grid_w_over_h
-        grid_dim = {
-            w = width,
-            h = grid_available_space.h,
-        }
-        unfilled_width := grid_available_space.w - width
-        grid_pos = {
-            x = unfilled_width / 2,
-            y = 0,
-        }
-    }
+    grid_pos, grid_dim := get_fitted_grid_pos_dim(GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, panel_dim.w)
     entity_push(
         grid_entity(
             grid_pos,
@@ -164,8 +131,8 @@ main_menu_screen_populate_entities :: proc(game: Game) {
 edit_screen_populate_entities :: proc(game: Game) {
     surface_dim := extent_to_dim(gc.surface_extent)
     state := game.state.(EditState)
+    side_panel_width: f32 = 400
     {     // side panel
-        side_panel_width: f32 = 400
         vertical_gap: f32 = 10
         horizontal_gap: f32 = 5
 
@@ -237,14 +204,7 @@ edit_screen_populate_entities :: proc(game: Game) {
     }
 
     {     // main grid
-        grid_pos := Pos {
-            x = 0,
-            y = 0,
-        }
-        grid_dim := Dim {
-            w = 400,
-            h = 400,
-        }
+        grid_pos, grid_dim := get_fitted_grid_pos_dim(GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, side_panel_width)
         active_piece := state.piece_buffer[state.active_piece_idx]
         entity_push(edit_grid_entity(grid_pos, grid_dim, active_piece.filled, active_piece.rot_centre))
         click_handler_dim := Dim {
@@ -476,9 +436,9 @@ edit_grid_button_on_clicks := []proc(game: ^Game) {
 
 edit_grid_intersection_on_click :: proc(game: ^Game, n: i32) {
     state := &game.state.(EditState)
-    new_value := GridPos{
-	x = n % (PIECE_WIDTH + 1),
-	y = n / (PIECE_WIDTH + 1),
+    new_value := GridPos {
+        x = n % (PIECE_WIDTH + 1),
+        y = n / (PIECE_WIDTH + 1),
     }
     state.piece_buffer[state.active_piece_idx].rot_centre = new_value
 }

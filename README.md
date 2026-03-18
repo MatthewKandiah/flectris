@@ -4,11 +4,10 @@ Tetris but you can pick your tileset.
 ## Plan
 - Write tetris / tetris block designer
 
-## Short term plan - Piece Editor
-- positioning and sizing of edit grid
+## Short term plan
+- "save" piece in game
 
 ## Medium term plans
-- "save" piece in game
 - export a game config as a string & import game config from string
 - save game configs and pick from list
 - game sounds
