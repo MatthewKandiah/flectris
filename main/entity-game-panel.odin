@@ -3,12 +3,14 @@ package main
 GamePanelEntityData :: struct {
     score:      int,
     next_piece: Piece,
+    saved_piece: Piece,
 }
 
-game_panel_entity :: proc(pos: Pos, dim: Dim, score: int, next_piece: Piece) -> Entity {
+game_panel_entity :: proc(pos: Pos, dim: Dim, score: int, next_piece: Piece, saved_piece: Piece) -> Entity {
     data := GamePanelEntityData {
         score      = score,
         next_piece = next_piece,
+	saved_piece = saved_piece,
     }
     return Entity{pos = pos, dim = dim, type = .GamePanel, data = data}
 }
@@ -16,7 +18,7 @@ game_panel_entity :: proc(pos: Pos, dim: Dim, score: int, next_piece: Piece) -> 
 draw_game_panel :: proc(entity: Entity) {
     data := entity.data.(GamePanelEntityData)
     panel_top_bot_margin :: 10
-    panel_left_right_margin :: 5
+    panel_left_right_margin :: 10
 
     score_dim := Dim {
         w = entity.dim.w - 2 * panel_left_right_margin,
@@ -27,7 +29,7 @@ draw_game_panel :: proc(entity: Entity) {
         y = entity.pos.y + entity.dim.h - panel_top_bot_margin - score_dim.h,
     }
 
-    next_piece_size := entity.dim.w - 2 * panel_left_right_margin
+    next_piece_size := entity.dim.w - 4 * panel_left_right_margin
     next_piece_dim := Dim {
         w = next_piece_size,
         h = next_piece_size,
@@ -35,6 +37,12 @@ draw_game_panel :: proc(entity: Entity) {
     next_piece_pos := Pos {
         x = entity.pos.x + panel_left_right_margin,
         y = score_pos.y - panel_top_bot_margin - next_piece_dim.h,
+    }
+
+    saved_piece_dim := next_piece_dim
+    saved_piece_pos := Pos {
+	x = next_piece_pos.x,
+	y = next_piece_pos.y - panel_top_bot_margin - next_piece_dim.h
     }
 
     draw_rect(DARK_GREY, entity.pos, entity.dim, GAME_PANEL_Z)
@@ -45,6 +53,13 @@ draw_game_panel :: proc(entity: Entity) {
         GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
         data.next_piece.filled[:],
         UI_TEXT_Z,
+    )
+    draw_grid_cells(
+	saved_piece_pos,
+	saved_piece_dim,
+	GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
+	data.saved_piece.filled[:],
+	UI_TEXT_Z,
     )
 }
 

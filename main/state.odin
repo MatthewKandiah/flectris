@@ -1,5 +1,7 @@
 package main
 
+import "core:math/rand"
+
 GlobalState :: struct {
     piece_buffer: [MAX_PIECES]Piece,
 }
@@ -20,8 +22,11 @@ GameState :: struct {
     piece_count:           int,
     active_piece:          GamePiece,
     next_piece:            GamePiece,
+    saved_piece:           GamePiece,
     active_piece_position: GridPos,
     has_active_piece:      bool,
+    has_saved_piece:       bool,
+    can_save_piece:        bool,
     ticks_until_drop:      int,
     ticks_per_drop:        int,
     score:                 int,
@@ -33,6 +38,8 @@ initial_game_state :: proc(game: Game) -> GameState {
     return GameState {
         grid = {},
         active_piece = {},
+        saved_piece = {},
+        has_saved_piece = false,
         piece_buffer = piece_buffer,
         piece_count = piece_count,
         next_piece = {},
@@ -43,8 +50,10 @@ initial_game_state :: proc(game: Game) -> GameState {
         has_lost = false,
         score = 0,
         level_lines_cleared = 0,
+        can_save_piece = true,
     }
 }
+
 rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
     updated_piece := GamePiece {
         bounding_dim = GridDim{w = gs.active_piece.bounding_dim.h, h = gs.active_piece.bounding_dim.w},
@@ -111,6 +120,28 @@ rotate_active_piece :: proc(gs: ^GameState, dir: Dir) {
 
     gs.active_piece = updated_piece
     gs.active_piece_position = updated_position
+}
+
+save_piece :: proc(gs: ^GameState) {
+    if (gs.has_saved_piece) {
+        tmp_piece := gs.saved_piece
+        gs.saved_piece = gs.active_piece
+        gs.active_piece = tmp_piece
+    } else {
+        gs.saved_piece = gs.active_piece
+	replace_active_piece_with_next(gs)
+    }
+    gs.active_piece_position.y = GRID_HEIGHT
+    gs.ticks_until_drop = gs.ticks_per_drop
+    gs.has_saved_piece = true
+    gs.can_save_piece = false
+}
+
+replace_active_piece_with_next :: proc(gs: ^GameState) {
+    gs.active_piece = gs.next_piece
+    gs.next_piece = gs.piece_buffer[rand.int_max(gs.piece_count)]
+    gs.has_active_piece = true
+    gs.can_save_piece = true
 }
 
 update_active_piece_position :: proc(gs: ^GameState, delta_x, delta_y: i32) -> (collided_bottom: bool) {

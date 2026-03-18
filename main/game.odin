@@ -63,7 +63,9 @@ game_screen_populate_entities :: proc(game: Game) {
         y = 0,
     }
 
-    entity_push(game_panel_entity(panel_pos, panel_dim, game_state.score, game_state.next_piece))
+    entity_push(
+        game_panel_entity(panel_pos, panel_dim, game_state.score, game_state.next_piece, game_state.saved_piece),
+    )
 
     grid_pos, grid_dim := get_fitted_grid_pos_dim(GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, panel_dim.w)
     entity_push(
@@ -289,7 +291,9 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
         {
             key_event := event.data.(KeyboardEvent)
             if (key_event.type == .Press && key_event.char == .Space) {
-                exit_on_click(game)
+                if game_state.can_save_piece {
+                    save_piece(game_state)
+                }
             } else if (key_event.type == .Press && key_event.char == .Escape) {
                 exit_to_menu(game)
             } else if (key_event.type == .Press && key_event.char == .Left) {
@@ -529,13 +533,11 @@ game_update :: proc(game: ^Game) {
 
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
-                game_state.active_piece = game_state.next_piece
-                game_state.next_piece = game_state.piece_buffer[rand.int_max(game_state.piece_count)]
+		replace_active_piece_with_next(game_state)
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,
                 }
-                game_state.has_active_piece = true
             }
 
             // automatically lower piece

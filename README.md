@@ -5,10 +5,9 @@ Tetris but you can pick your tileset.
 - Write tetris / tetris block designer
 
 ## Short term plan
-- "save" piece in game
+- export a game config as a string & import game config from string
 
 ## Medium term plans
-- export a game config as a string & import game config from string
 - save game configs and pick from list
 - game sounds
 - save move history and view / validate replay
