@@ -13,6 +13,8 @@ MAX_PIECES :: 8
 
 LINES_PER_LEVEL :: 20
 
+SIDE_PANEL_WIDTH :: 400
+
 GridData :: [GRID_WIDTH * GRID_HEIGHT]int
 PieceData :: [PIECE_WIDTH * PIECE_HEIGHT]int
 
@@ -55,7 +57,7 @@ game_screen_populate_entities :: proc(game: Game) {
     game_state := game.state.(GameState)
 
     panel_dim := Dim {
-        w = 480,
+        w = SIDE_PANEL_WIDTH,
         h = cast(f32)(gc.surface_extent.height),
     }
     panel_pos := Pos {
@@ -133,13 +135,12 @@ main_menu_screen_populate_entities :: proc(game: Game) {
 edit_screen_populate_entities :: proc(game: Game) {
     surface_dim := extent_to_dim(gc.surface_extent)
     state := game.state.(EditState)
-    side_panel_width: f32 = 400
     {     // side panel
         vertical_gap: f32 = 10
         horizontal_gap: f32 = 5
 
         piece_button_dim := Dim {
-            w = (side_panel_width - (3 * horizontal_gap)) / 2,
+            w = (SIDE_PANEL_WIDTH - (3 * horizontal_gap)) / 2,
             h = (surface_dim.h - (7 * vertical_gap)) / 6,
         }
         text_button_dim := Dim {
@@ -149,7 +150,7 @@ edit_screen_populate_entities :: proc(game: Game) {
 
         exit_str := "EXIT"
         exit_button_pos := Pos {
-            x = surface_dim.w - side_panel_width + horizontal_gap,
+            x = surface_dim.w - SIDE_PANEL_WIDTH + horizontal_gap,
             y = vertical_gap,
         }
 
@@ -206,7 +207,7 @@ edit_screen_populate_entities :: proc(game: Game) {
     }
 
     {     // main grid
-        grid_pos, grid_dim := get_fitted_grid_pos_dim(GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, side_panel_width)
+        grid_pos, grid_dim := get_fitted_grid_pos_dim(GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT}, SIDE_PANEL_WIDTH)
         active_piece := state.piece_buffer[state.active_piece_idx]
         entity_push(edit_grid_entity(grid_pos, grid_dim, active_piece.filled, active_piece.rot_centre))
         click_handler_dim := Dim {
