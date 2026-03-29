@@ -4,6 +4,8 @@ import "core:fmt"
 import "core:mem"
 import "core:testing"
 
+// TODO-NEXT: function that takes [MAX_PIECES]u32 input, and returns string representation
+
 decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (pieces: [MAX_PIECES]Piece) {
     for input, idx in inputs {
         rot_centre_x := (input & 0b111_000_00000_00000_00000_00000_00000) >> 28
@@ -17,12 +19,12 @@ decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (pieces: [MAX_PIECES]Pie
             y = cast(i32)rot_centre_y,
         }
 
-	padded_filled_bools := piece_u32_to_binary(filled)
-	filled_bools := padded_filled_bools[6:]
+        padded_filled_bools := piece_u32_to_binary(filled)
+        filled_bools := padded_filled_bools[6:]
         for b, filled_idx in filled_bools {
-	    if !b {continue}
-	    pieces[idx].filled[filled_idx] = idx+1
-	}
+            if !b {continue}
+            pieces[idx].filled[filled_idx] = idx + 1
+        }
     }
     return
 }
@@ -30,8 +32,8 @@ decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (pieces: [MAX_PIECES]Pie
 encode_piece_config :: proc(pieces: [MAX_PIECES]Piece) -> (output: [MAX_PIECES]u32) {
     for piece, idx in pieces {
         binary_rep := piece_binary_representation(piece)
-	value := piece_binary_to_u32(binary_rep)
-	output[idx] = value
+        value := piece_binary_to_u32(binary_rep)
+        output[idx] = value
     }
     return
 }
@@ -62,19 +64,19 @@ piece_binary_representation :: proc(piece: Piece) -> (output: [31]bool) {
 
 piece_binary_to_u32 :: proc(input: [31]bool) -> (output: u32) {
     for digit_is_one in input {
-	output *= 2
-	if digit_is_one {output += 1}
+        output *= 2
+        if digit_is_one {output += 1}
     }
     return
 }
 
 piece_u32_to_binary :: proc(input: u32) -> (output: [31]bool) {
     input := input
-    for i in 0..<31 {
-	write_index := 30-i
-	current_value := input % 2 == 1
-	output[write_index] = current_value
-	input /= 2
+    for i in 0 ..< 31 {
+        write_index := 30 - i
+        current_value := input % 2 == 1
+        output[write_index] = current_value
+        input /= 2
     }
     return
 }
@@ -97,19 +99,19 @@ piece_filled_binary_representation :: proc(filled: PieceData) -> (out: [25]bool)
     return
 }
 
-test_make_piece :: proc() -> Piece {
+test_make_piece :: proc(idx: int = 1) -> Piece {
     return Piece {
         rot_centre = GridPos{x = 2, y = 3},
         filled = [PIECE_HEIGHT * PIECE_WIDTH]int {
             0,
             0,
-            1,
+            idx,
             0,
             0,
             0,
             0,
             0,
-            1,
+            idx,
             0,
             0,
             0,
@@ -117,14 +119,14 @@ test_make_piece :: proc() -> Piece {
             0,
             0,
             0,
-            1,
-            1,
-            1,
+            idx,
+            idx,
+            idx,
             0,
             0,
             0,
             0,
-            1,
+            idx,
             0,
         },
     }
@@ -222,7 +224,7 @@ piece_binary_value :: proc(t: ^testing.T) {
         true,
         false,
     }
-    
+
 
     testing.expect_value(t, output, expected)
 }
@@ -247,9 +249,56 @@ piece_u32_to_binary_val :: proc(t: ^testing.T) {
 }
 
 @(test)
-import_export_round_trip_1_piece :: proc(t: ^testing.T) {
+import_export_round_trip_first_piece :: proc(t: ^testing.T) {
     piece := test_make_piece()
     pieces: [MAX_PIECES]Piece = {piece, {}, {}, {}, {}, {}, {}, {}}
+
+    encoded := encode_piece_config(pieces)
+    decoded := decode_piece_config(encoded)
+
+    for i in 0 ..< MAX_PIECES {
+        testing.expect_value(t, decoded[i], pieces[i])
+    }
+}
+
+@(test)
+import_export_round_trip_last_piece :: proc(t: ^testing.T) {
+    piece := test_make_piece(8)
+    pieces: [MAX_PIECES]Piece = {{}, {}, {}, {}, {}, {}, {}, piece}
+
+    encoded := encode_piece_config(pieces)
+    decoded := decode_piece_config(encoded)
+
+    for i in 0 ..< MAX_PIECES {
+        testing.expect_value(t, decoded[i], pieces[i])
+    }
+}
+
+@(test)
+import_export_round_trip_middle_piece :: proc(t: ^testing.T) {
+    piece := test_make_piece(5)
+    pieces: [MAX_PIECES]Piece = {{}, {}, {}, {}, piece, {}, {}, {}}
+
+    encoded := encode_piece_config(pieces)
+    decoded := decode_piece_config(encoded)
+
+    for i in 0 ..< MAX_PIECES {
+        testing.expect_value(t, decoded[i], pieces[i])
+    }
+}
+
+@(test)
+import_export_round_trip_multiple_pieces :: proc(t: ^testing.T) {
+    pieces: [MAX_PIECES]Piece = {
+        test_make_piece(1),
+        test_make_piece(2),
+        test_make_piece(3),
+        test_make_piece(4),
+        test_make_piece(5),
+        test_make_piece(6),
+        test_make_piece(7),
+        test_make_piece(8),
+    }
 
     encoded := encode_piece_config(pieces)
     decoded := decode_piece_config(encoded)
