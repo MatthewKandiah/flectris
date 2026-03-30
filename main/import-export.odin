@@ -1,10 +1,93 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import "core:mem"
 import "core:testing"
 
-// TODO-NEXT: function that takes [MAX_PIECES]u32 input, and returns string representation
+decode_string_to_piece_config :: proc(input: [7 * MAX_PIECES]u8) -> [MAX_PIECES]Piece {
+    encoded_pieces: [MAX_PIECES]u32
+    buf: [7]u8
+    for i in 0 ..< MAX_PIECES {
+        for j in 0 ..< 7 {
+            buf[j] = input[i * 7 + j]
+        }
+        encoded_pieces[i] = string_to_encoded_piece(buf)
+    }
+    return decode_piece_config(encoded_pieces)
+}
+
+encode_piece_config_to_string :: proc(input: [MAX_PIECES]Piece) -> (output: [7 * MAX_PIECES]u8) {
+    pieces := encode_piece_config(input)
+    for piece, idx in pieces {
+        chars := encoded_piece_to_string(piece)
+        for c, c_idx in chars {
+            output[idx * 7 + c_idx] = c
+        }
+    }
+    return
+}
+
+pow :: proc(input: u32, exponent: u32) -> (result: u32) {
+    result = 1
+    exponent := exponent
+    for exponent > 0 {
+        result *= input
+        exponent -= 1
+    }
+    return
+}
+
+string_to_encoded_piece :: proc(input: [7]u8) -> (output: u32) {
+    for digit, idx in input {
+	digit_val := ascii_char_to_value(digit)
+        output += cast(u32)digit_val * pow(36, cast(u32)(len(input) - 1 - idx))
+    }
+    return
+}
+
+ascii_char_to_value :: proc(c: u8) -> u32 {
+    switch c {
+    case '0'..='9':
+	return cast(u32)(c - '0')
+    case 'A'..='Z':
+	return cast(u32)(c - 'A' + 10)
+    case:
+	panic("Unexpected value c out of range")
+    }
+}
+
+encoded_piece_to_string :: proc(input: u32) -> (output: [7]u8) {
+    // max u32 = 4,294,967,295
+    // 36 ^ 0 = 1
+    // 36 ^ 1 = 36
+    // 36 ^ 2 = 1,296
+    // 36 ^ 3 = 46,656
+    // 36 ^ 4 = 1,679,616
+    // 36 ^ 5 = 60,466,176
+    // 36 ^ 6 = 2,176,782,336
+    // 36 ^ 7 = 78,364,164,096
+
+    base_36_digit_to_char :: proc(digit: u32) -> u8 {
+        switch digit {
+        case 0 ..= 9:
+            return cast(u8)(digit + '0')
+        case 10 ..= 35:
+            return cast(u8)(digit - 10 + 'A')
+        case:
+            panic("Unexpected digit > 35")
+        }
+    }
+
+    numerator := input
+    for i in 0 ..< len(output) {
+        output_digit_exponent := cast(u32)(len(output) - 1 - i)
+        output_digit_val := pow(36, output_digit_exponent)
+        output[i] = base_36_digit_to_char(numerator / output_digit_val)
+        numerator %= output_digit_val
+    }
+    return
+}
 
 decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (pieces: [MAX_PIECES]Piece) {
     for input, idx in inputs {
@@ -305,5 +388,27 @@ import_export_round_trip_multiple_pieces :: proc(t: ^testing.T) {
 
     for i in 0 ..< MAX_PIECES {
         testing.expect_value(t, decoded[i], pieces[i])
+    }
+}
+
+@(test)
+import_export_string_round_trip :: proc(t: ^testing.T) {
+    pieces: [MAX_PIECES]Piece = {
+        test_make_piece(1),
+        test_make_piece(2),
+        test_make_piece(3),
+        test_make_piece(4),
+        test_make_piece(5),
+        test_make_piece(6),
+        {},
+        test_make_piece(8),
+    }
+
+    encoded := encode_piece_config_to_string(pieces)
+    fmt.println(string(encoded[:]))
+    decoded := decode_string_to_piece_config(encoded)
+
+    for i in 0 ..< MAX_PIECES {
+	testing.expect_value(t, decoded[i], pieces[i])
     }
 }

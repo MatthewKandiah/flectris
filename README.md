@@ -5,8 +5,6 @@ Tetris but you can pick your tileset.
 - Write tetris / tetris block designer
 
 ## Short term plan
-- encode game piece config as 28bit bitstring
-- function accept bitstring, interpret value as unsigned int, output base-36 representation of the number
 - button to export string - copy to clipboard
 - text input area
 - paste from clipboard button
