@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math/rand"
+import "core:strings"
 import "vendor:glfw"
 
 GRID_WIDTH :: 10
@@ -389,11 +390,25 @@ edit_on_click :: proc(game: ^Game) {
 }
 
 import_on_click :: proc(game: ^Game) {
-    fmt.println("IMPORT")
+    str := glfw.GetClipboardString(gc.window)
+    assert(len(str) == CONFIG_STRING_LENGTH * MAX_PIECES)
+    bytes := transmute([]u8)str
+    buf := [CONFIG_STRING_LENGTH * MAX_PIECES]u8{}
+    for b, idx in bytes {
+	buf[idx] = b
+    }
+    state := &game.state.(MainMenuState)
+    // TODO - handle bad imports gracefully
+    pieces := decode_string_to_piece_config(buf)
+    state.piece_config_string = buf
+    game.global.piece_buffer = pieces
 }
 
 export_on_click :: proc(game: ^Game) {
-    fmt.println("EXPORT")
+    str := string((&game.state.(MainMenuState)).piece_config_string[:])
+    cstr := strings.clone_to_cstring(str)
+    defer {delete(cstr)}
+    glfw.SetClipboardString(gc.window, cstr)
 }
 
 edit_cancel_on_click :: proc(game: ^Game) {
