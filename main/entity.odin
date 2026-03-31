@@ -24,6 +24,7 @@ EntityType :: enum {
     Grid,
     GamePanel,
     EditGrid,
+    Text,
 }
 
 EntityData :: union {
@@ -33,6 +34,7 @@ EntityData :: union {
     GridEntityData,
     GamePanelEntityData,
     EditGridEntityData,
+    TextEntityData,
 }
 
 entity_push :: proc(entity: Entity) {

@@ -5,24 +5,26 @@ import "core:math"
 import "core:mem"
 import "core:testing"
 
-decode_string_to_piece_config :: proc(input: [7 * MAX_PIECES]u8) -> [MAX_PIECES]Piece {
+CONFIG_STRING_LENGTH :: 7
+
+decode_string_to_piece_config :: proc(input: [CONFIG_STRING_LENGTH * MAX_PIECES]u8) -> [MAX_PIECES]Piece {
     encoded_pieces: [MAX_PIECES]u32
-    buf: [7]u8
+    buf: [CONFIG_STRING_LENGTH]u8
     for i in 0 ..< MAX_PIECES {
-        for j in 0 ..< 7 {
-            buf[j] = input[i * 7 + j]
+        for j in 0 ..< CONFIG_STRING_LENGTH {
+            buf[j] = input[i * CONFIG_STRING_LENGTH + j]
         }
         encoded_pieces[i] = string_to_encoded_piece(buf)
     }
     return decode_piece_config(encoded_pieces)
 }
 
-encode_piece_config_to_string :: proc(input: [MAX_PIECES]Piece) -> (output: [7 * MAX_PIECES]u8) {
+encode_piece_config_to_string :: proc(input: [MAX_PIECES]Piece) -> (output: [CONFIG_STRING_LENGTH * MAX_PIECES]u8) {
     pieces := encode_piece_config(input)
     for piece, idx in pieces {
         chars := encoded_piece_to_string(piece)
         for c, c_idx in chars {
-            output[idx * 7 + c_idx] = c
+            output[idx * CONFIG_STRING_LENGTH + c_idx] = c
         }
     }
     return
@@ -38,7 +40,7 @@ pow :: proc(input: u32, exponent: u32) -> (result: u32) {
     return
 }
 
-string_to_encoded_piece :: proc(input: [7]u8) -> (output: u32) {
+string_to_encoded_piece :: proc(input: [CONFIG_STRING_LENGTH]u8) -> (output: u32) {
     for digit, idx in input {
 	digit_val := ascii_char_to_value(digit)
         output += cast(u32)digit_val * pow(36, cast(u32)(len(input) - 1 - idx))
@@ -57,7 +59,7 @@ ascii_char_to_value :: proc(c: u8) -> u32 {
     }
 }
 
-encoded_piece_to_string :: proc(input: u32) -> (output: [7]u8) {
+encoded_piece_to_string :: proc(input: u32) -> (output: [CONFIG_STRING_LENGTH]u8) {
     // max u32 = 4,294,967,295
     // 36 ^ 0 = 1
     // 36 ^ 1 = 36
@@ -405,7 +407,6 @@ import_export_string_round_trip :: proc(t: ^testing.T) {
     }
 
     encoded := encode_piece_config_to_string(pieces)
-    fmt.println(string(encoded[:]))
     decoded := decode_string_to_piece_config(encoded)
 
     for i in 0 ..< MAX_PIECES {

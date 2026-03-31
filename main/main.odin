@@ -111,7 +111,7 @@ main :: proc() {
         }
         EVENT_BUFFER_COUNT = 0
 
-        game_populate_entities(game)
+        game_populate_entities(&game)
         draw_entities()
         render_frame(&renderer)
 

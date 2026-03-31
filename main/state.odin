@@ -1,9 +1,21 @@
 package main
 
+import "core:fmt"
 import "core:math/rand"
 
 GlobalState :: struct {
     piece_buffer: [MAX_PIECES]Piece,
+}
+
+MainMenuState :: struct {
+    piece_config_string: [CONFIG_STRING_LENGTH * MAX_PIECES]u8,
+}
+
+main_menu_state :: proc(pieces: [MAX_PIECES]Piece) -> MainMenuState {
+    result := MainMenuState{
+	piece_config_string = encode_piece_config_to_string(pieces)
+    }
+    return result
 }
 
 EditState :: struct {

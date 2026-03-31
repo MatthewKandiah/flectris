@@ -23,6 +23,7 @@ Game :: struct {
     state:  union {
         GameState,
         EditState,
+        MainMenuState,
     },
     global: GlobalState,
 }
@@ -34,14 +35,11 @@ Screen :: enum {
 }
 
 init_game :: proc() -> Game {
-    return Game {
-        screen = .MAIN_MENU,
-        state = {},
-        global = {piece_buffer = [MAX_PIECES]Piece{piece1, piece2, piece3, piece4, piece5, piece6, piece7, {}}},
-    }
+    initial_pieces := [MAX_PIECES]Piece{piece1, piece2, piece3, piece4, piece5, piece6, piece7, {}}
+    return Game{screen = .MAIN_MENU, state = main_menu_state(initial_pieces), global = {piece_buffer = initial_pieces}}
 }
 
-game_populate_entities :: proc(game: Game) {
+game_populate_entities :: proc(game: ^Game) {
     ENTITY_COUNT = 0
     switch game.screen {
     case .GAME:
@@ -53,7 +51,7 @@ game_populate_entities :: proc(game: Game) {
     }
 }
 
-game_screen_populate_entities :: proc(game: Game) {
+game_screen_populate_entities :: proc(game: ^Game) {
     game_state := game.state.(GameState)
 
     panel_dim := Dim {
@@ -82,9 +80,11 @@ game_screen_populate_entities :: proc(game: Game) {
     )
 }
 
-main_menu_screen_populate_entities :: proc(game: Game) {
+main_menu_screen_populate_entities :: proc(game: ^Game) {
     start_str := "START"
     surface_dim := extent_to_dim(gc.surface_extent)
+    state := &game.state.(MainMenuState)
+    
     button_dim := Dim {
         w = 200,
         h = 100,
@@ -103,6 +103,10 @@ main_menu_screen_populate_entities :: proc(game: Game) {
         x = start_button_pos.x,
         y = start_button_pos.y - 3 * button_dim.h,
     }
+
+    piece_config_str_pos := Pos { x = 20, y = 20}
+    piece_config_str_dim := Dim { w = surface_dim.w - 40, h = 20}
+    
     entity_push(
         text_button_entity(
             start_button_pos,
@@ -130,9 +134,16 @@ main_menu_screen_populate_entities :: proc(game: Game) {
             edit_on_click,
         ),
     )
+    entity_push(
+	text_entity(
+	    piece_config_str_pos,
+	    piece_config_str_dim,
+	    state.piece_config_string[:],
+	)
+    )
 }
 
-edit_screen_populate_entities :: proc(game: Game) {
+edit_screen_populate_entities :: proc(game: ^Game) {
     surface_dim := extent_to_dim(gc.surface_extent)
     state := game.state.(EditState)
     {     // side panel
@@ -353,9 +364,10 @@ edit_cancel_on_click :: proc(game: ^Game) {
 }
 
 edit_exit_on_click :: proc(game: ^Game) {
-    edit_state := game.state.(EditState)
-    game.global.piece_buffer = edit_state.piece_buffer
+    piece_buffer := game.state.(EditState).piece_buffer
+    game.global.piece_buffer = piece_buffer
     game.screen = .MAIN_MENU
+    game.state = main_menu_state(piece_buffer)
 }
 
 edit_piece_on_click :: proc(game: ^Game, n: int) {
@@ -534,7 +546,7 @@ game_update :: proc(game: ^Game) {
 
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
-		replace_active_piece_with_next(game_state)
+                replace_active_piece_with_next(game_state)
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
                     y = GRID_HEIGHT,

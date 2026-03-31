@@ -51,6 +51,8 @@ draw_entity :: proc(entity: Entity) {
         draw_game_panel(entity)
     case .EditGrid:
 	draw_edit_grid(entity)
+    case .Text:
+	draw_text(entity)
     }
 }
 
