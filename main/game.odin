@@ -84,7 +84,7 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
     start_str := "START"
     surface_dim := extent_to_dim(gc.surface_extent)
     state := &game.state.(MainMenuState)
-    
+
     button_dim := Dim {
         w = 200,
         h = 100,
@@ -107,18 +107,23 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
     import_str := "IMPORT"
     export_str := "EXPORT"
     import_button_pos := Pos {
-	x = edit_button_pos.x - button_dim.w/2 - 10,
-	y = start_button_pos.y - 4.5 * button_dim.h,
+        x = edit_button_pos.x - button_dim.w / 2 - 10,
+        y = start_button_pos.y - 4.5 * button_dim.h,
     }
     export_button_pos := Pos {
-	x = edit_button_pos.x + button_dim.w/2 + 10,
-	y = start_button_pos.y - 4.5 * button_dim.h,
+        x = edit_button_pos.x + button_dim.w / 2 + 10,
+        y = start_button_pos.y - 4.5 * button_dim.h,
     }
-    
-    piece_config_str_pos := Pos { x = 20, y = 20}
-    piece_config_str_dim := Dim { w = surface_dim.w - 40, h = 20}
-    
-    
+
+    piece_config_str_pos := Pos {
+        x = 20,
+        y = 20,
+    }
+    piece_config_str_dim := Dim {
+        w = surface_dim.w - 40,
+        h = 20,
+    }
+
     entity_push(
         text_button_entity(
             start_button_pos,
@@ -147,30 +152,24 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
         ),
     )
     entity_push(
-	text_button_entity(
-	    import_button_pos,
-	    button_dim,
-	    transmute([]u8)import_str,
-	    is_hovered(import_button_pos, button_dim),
-	    import_on_click,
-	)
+        text_button_entity(
+            import_button_pos,
+            button_dim,
+            transmute([]u8)import_str,
+            is_hovered(import_button_pos, button_dim),
+            import_on_click,
+        ),
     )
     entity_push(
-	text_button_entity(
-	    export_button_pos,
-	    button_dim,
-	    transmute([]u8)export_str,
-	    is_hovered(export_button_pos, button_dim),
-	    export_on_click,
-	)
+        text_button_entity(
+            export_button_pos,
+            button_dim,
+            transmute([]u8)export_str,
+            is_hovered(export_button_pos, button_dim),
+            export_on_click,
+        ),
     )
-    entity_push(
-	text_entity(
-	    piece_config_str_pos,
-	    piece_config_str_dim,
-	    state.piece_config_string[:],
-	)
-    )
+    entity_push(text_entity(piece_config_str_pos, piece_config_str_dim, state.piece_config_string[:]))
 }
 
 edit_screen_populate_entities :: proc(game: ^Game) {
