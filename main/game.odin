@@ -104,8 +104,20 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
         y = start_button_pos.y - 3 * button_dim.h,
     }
 
+    import_str := "IMPORT"
+    export_str := "EXPORT"
+    import_button_pos := Pos {
+	x = edit_button_pos.x - button_dim.w/2 - 10,
+	y = start_button_pos.y - 4.5 * button_dim.h,
+    }
+    export_button_pos := Pos {
+	x = edit_button_pos.x + button_dim.w/2 + 10,
+	y = start_button_pos.y - 4.5 * button_dim.h,
+    }
+    
     piece_config_str_pos := Pos { x = 20, y = 20}
     piece_config_str_dim := Dim { w = surface_dim.w - 40, h = 20}
+    
     
     entity_push(
         text_button_entity(
@@ -133,6 +145,24 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
             is_hovered(edit_button_pos, button_dim),
             edit_on_click,
         ),
+    )
+    entity_push(
+	text_button_entity(
+	    import_button_pos,
+	    button_dim,
+	    transmute([]u8)import_str,
+	    is_hovered(import_button_pos, button_dim),
+	    import_on_click,
+	)
+    )
+    entity_push(
+	text_button_entity(
+	    export_button_pos,
+	    button_dim,
+	    transmute([]u8)export_str,
+	    is_hovered(export_button_pos, button_dim),
+	    export_on_click,
+	)
     )
     entity_push(
 	text_entity(
@@ -357,6 +387,14 @@ exit_to_menu :: proc(game: ^Game) {
 edit_on_click :: proc(game: ^Game) {
     game.screen = .EDIT
     game.state = initial_edit_state(game^)
+}
+
+import_on_click :: proc(game: ^Game) {
+    fmt.println("IMPORT")
+}
+
+export_on_click :: proc(game: ^Game) {
+    fmt.println("EXPORT")
 }
 
 edit_cancel_on_click :: proc(game: ^Game) {
