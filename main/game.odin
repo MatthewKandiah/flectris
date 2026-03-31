@@ -398,7 +398,7 @@ import_on_click :: proc(game: ^Game) {
 	buf[idx] = b
     }
     state := &game.state.(MainMenuState)
-    // TODO - handle bad imports gracefully
+    // TODO-NEXT: handle bad imports gracefully
     pieces := decode_string_to_piece_config(buf)
     state.piece_config_string = buf
     game.global.piece_buffer = pieces
