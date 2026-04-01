@@ -2,20 +2,36 @@ package main
 
 import "core:fmt"
 import "core:math/rand"
+import "core:mem"
 
 GlobalState :: struct {
     piece_buffer: [MAX_PIECES]Piece,
 }
 
+MAX_ERR_STR_LENGTH :: 64
+
 MainMenuState :: struct {
     piece_config_string: [CONFIG_STRING_LENGTH * MAX_PIECES]u8,
+    error_string_buf: [MAX_ERR_STR_LENGTH]u8,
+    error_string: []u8
 }
 
 main_menu_state :: proc(pieces: [MAX_PIECES]Piece) -> MainMenuState {
     result := MainMenuState{
-	piece_config_string = encode_piece_config_to_string(pieces)
+	piece_config_string = encode_piece_config_to_string(pieces),
+	error_string_buf = {},
+	error_string = nil,
     }
-    return result
+    return result   
+}
+
+set_main_menu_error :: proc(state: ^MainMenuState, str: []u8) {
+    if len(str) > len(state.error_string_buf) {
+	panic("String too long, main main state buffer")
+    }
+    
+    mem.copy_non_overlapping(&state.error_string_buf, raw_data(str), len(str))
+    state.error_string = state.error_string_buf[0:len(str)]
 }
 
 EditState :: struct {

@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math/rand"
+import "core:mem"
 import "core:strings"
 import "vendor:glfw"
 
@@ -124,6 +125,15 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
         w = surface_dim.w - 40,
         h = 20,
     }
+    error_message_pos := Pos {
+        x = piece_config_str_pos.x,
+        y = piece_config_str_pos.y + piece_config_str_dim.h,
+    }
+    char_width := piece_config_str_dim.w / (CONFIG_STRING_LENGTH * MAX_PIECES)
+    error_message_dim := Dim {
+	w = char_width * cast(f32)len(state.error_string),
+	h = 20,
+    }
 
     entity_push(
         text_button_entity(
@@ -171,6 +181,7 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
         ),
     )
     entity_push(text_entity(piece_config_str_pos, piece_config_str_dim, state.piece_config_string[:]))
+    entity_push(text_entity(error_message_pos, error_message_dim, state.error_string))
 }
 
 edit_screen_populate_entities :: proc(game: ^Game) {
@@ -390,18 +401,26 @@ edit_on_click :: proc(game: ^Game) {
 }
 
 import_on_click :: proc(game: ^Game) {
+    state := &game.state.(MainMenuState)
     str := glfw.GetClipboardString(gc.window)
-    assert(len(str) == CONFIG_STRING_LENGTH * MAX_PIECES)
+    str = strings.trim(str, " \n\r\t")
+    if len(str) < CONFIG_STRING_LENGTH * MAX_PIECES {
+        err_msg := "STRING TOO SHORT"
+        set_main_menu_error(state, transmute([]u8)err_msg)
+        return
+    } else if len(str) > CONFIG_STRING_LENGTH * MAX_PIECES {
+	err_msg := "STRING TOO LONG"
+	set_main_menu_error(state, transmute([]u8)err_msg)
+	return
+    }
+
     bytes := transmute([]u8)str
     buf := [CONFIG_STRING_LENGTH * MAX_PIECES]u8{}
-    for b, idx in bytes {
-	buf[idx] = b
-    }
-    state := &game.state.(MainMenuState)
-    // TODO-NEXT: handle bad imports gracefully
+    mem.copy_non_overlapping(&buf, raw_data(bytes), len(buf))
     pieces := decode_string_to_piece_config(buf)
     state.piece_config_string = buf
     game.global.piece_buffer = pieces
+    state.error_string = nil
 }
 
 export_on_click :: proc(game: ^Game) {
@@ -412,7 +431,7 @@ export_on_click :: proc(game: ^Game) {
 }
 
 edit_cancel_on_click :: proc(game: ^Game) {
-    game.screen = .MAIN_MENU    
+    game.screen = .MAIN_MENU
     game.state = main_menu_state(game.global.piece_buffer)
 }
 

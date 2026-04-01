@@ -7,6 +7,7 @@ import "core:testing"
 
 CONFIG_STRING_LENGTH :: 6
 
+// multiple returns to indicate success/failure
 decode_string_to_piece_config :: proc(input: [CONFIG_STRING_LENGTH * MAX_PIECES]u8) -> [MAX_PIECES]Piece {
     encoded_pieces: [MAX_PIECES]u32
     buf: [CONFIG_STRING_LENGTH]u8
