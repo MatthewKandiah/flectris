@@ -131,8 +131,8 @@ main_menu_screen_populate_entities :: proc(game: ^Game) {
     }
     char_width := piece_config_str_dim.w / (CONFIG_STRING_LENGTH * MAX_PIECES)
     error_message_dim := Dim {
-	w = char_width * cast(f32)len(state.error_string),
-	h = 20,
+        w = char_width * cast(f32)len(state.error_string),
+        h = 20,
     }
 
     entity_push(
@@ -409,15 +409,22 @@ import_on_click :: proc(game: ^Game) {
         set_main_menu_error(state, transmute([]u8)err_msg)
         return
     } else if len(str) > CONFIG_STRING_LENGTH * MAX_PIECES {
-	err_msg := "STRING TOO LONG"
-	set_main_menu_error(state, transmute([]u8)err_msg)
-	return
+        err_msg := "STRING TOO LONG"
+        set_main_menu_error(state, transmute([]u8)err_msg)
+        return
     }
 
     bytes := transmute([]u8)str
     buf := [CONFIG_STRING_LENGTH * MAX_PIECES]u8{}
     mem.copy_non_overlapping(&buf, raw_data(bytes), len(buf))
-    pieces := decode_string_to_piece_config(buf)
+
+    ok, pieces := decode_string_to_piece_config(buf)
+    if !ok {
+        err_msg := "INVALID IMPORTED STRING"
+        set_main_menu_error(state, transmute([]u8)err_msg)
+        return
+    }
+
     state.piece_config_string = buf
     game.global.piece_buffer = pieces
     state.error_string = nil

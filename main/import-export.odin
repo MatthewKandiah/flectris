@@ -7,8 +7,19 @@ import "core:testing"
 
 CONFIG_STRING_LENGTH :: 6
 
-// multiple returns to indicate success/failure
-decode_string_to_piece_config :: proc(input: [CONFIG_STRING_LENGTH * MAX_PIECES]u8) -> [MAX_PIECES]Piece {
+decode_string_to_piece_config :: proc(
+    input: [CONFIG_STRING_LENGTH * MAX_PIECES]u8,
+) -> (
+    ok: bool,
+    pieces: [MAX_PIECES]Piece,
+) {
+    for c in input {
+        if !is_valid_char(c) {
+            fmt.println("char")
+            return
+        }
+    }
+
     encoded_pieces: [MAX_PIECES]u32
     buf: [CONFIG_STRING_LENGTH]u8
     for i in 0 ..< MAX_PIECES {
@@ -43,20 +54,30 @@ pow :: proc(input: u32, exponent: u32) -> (result: u32) {
 
 string_to_encoded_piece :: proc(input: [CONFIG_STRING_LENGTH]u8) -> (output: u32) {
     for digit, idx in input {
-	digit_val := ascii_char_to_value(digit)
+        digit_val := ascii_char_to_value(digit)
         output += cast(u32)digit_val * pow(36, cast(u32)(len(input) - 1 - idx))
     }
     return
 }
 
+is_valid_char :: proc(c: u8) -> bool {
+    switch c {
+    case '0' ..= '9':
+        return true
+    case 'A' ..= 'Z':
+        return true
+    }
+    return false
+}
+
 ascii_char_to_value :: proc(c: u8) -> u32 {
     switch c {
-    case '0'..='9':
-	return cast(u32)(c - '0')
-    case 'A'..='Z':
-	return cast(u32)(c - 'A' + 10)
+    case '0' ..= '9':
+        return cast(u32)(c - '0')
+    case 'A' ..= 'Z':
+        return cast(u32)(c - 'A' + 10)
     case:
-	panic("Unexpected value c out of range")
+        panic("Unexpected value c out of range")
     }
 }
 
@@ -92,12 +113,20 @@ encoded_piece_to_string :: proc(input: u32) -> (output: [CONFIG_STRING_LENGTH]u8
     return
 }
 
-decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (pieces: [MAX_PIECES]Piece) {
+decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (ok: bool, pieces: [MAX_PIECES]Piece) {
     for input, idx in inputs {
+        padding_bit := input >> 31
+        if padding_bit != 0 {
+            return
+        }
         rot_centre_x := (input & 0b111_000_00000_00000_00000_00000_00000) >> 28
-        assert(rot_centre_x >= 0 && rot_centre_x < 6, fmt.tprintf("Unexpected decoded x value: %d", rot_centre_x))
+        if !(rot_centre_x >= 0 && rot_centre_x < 6) {
+            return
+        }
         rot_centre_y := (input & 0b000_111_00000_00000_00000_00000_00000) >> 25
-        assert(rot_centre_y >= 0 && rot_centre_y < 6, fmt.tprintf("Unexpected decoded y value: %d", rot_centre_y))
+        if !(rot_centre_y >= 0 && rot_centre_y < 6) {
+            return
+        }
         filled := input & 0b000_000_11111_11111_11111_11111_11111
 
         pieces[idx].rot_centre = GridPos {
@@ -112,7 +141,7 @@ decode_piece_config :: proc(inputs: [MAX_PIECES]u32) -> (pieces: [MAX_PIECES]Pie
             pieces[idx].filled[filled_idx] = idx + 1
         }
     }
-    return
+    return true, pieces
 }
 
 encode_piece_config :: proc(pieces: [MAX_PIECES]Piece) -> (output: [MAX_PIECES]u32) {
@@ -340,7 +369,8 @@ import_export_round_trip_first_piece :: proc(t: ^testing.T) {
     pieces: [MAX_PIECES]Piece = {piece, {}, {}, {}, {}, {}, {}, {}}
 
     encoded := encode_piece_config(pieces)
-    decoded := decode_piece_config(encoded)
+    ok, decoded := decode_piece_config(encoded)
+    testing.expect_value(t, ok, true)
 
     for i in 0 ..< MAX_PIECES {
         testing.expect_value(t, decoded[i], pieces[i])
@@ -353,7 +383,8 @@ import_export_round_trip_last_piece :: proc(t: ^testing.T) {
     pieces: [MAX_PIECES]Piece = {{}, {}, {}, {}, {}, {}, {}, piece}
 
     encoded := encode_piece_config(pieces)
-    decoded := decode_piece_config(encoded)
+    ok, decoded := decode_piece_config(encoded)
+    testing.expect_value(t, ok, true)
 
     for i in 0 ..< MAX_PIECES {
         testing.expect_value(t, decoded[i], pieces[i])
@@ -366,7 +397,8 @@ import_export_round_trip_middle_piece :: proc(t: ^testing.T) {
     pieces: [MAX_PIECES]Piece = {{}, {}, {}, {}, piece, {}, {}, {}}
 
     encoded := encode_piece_config(pieces)
-    decoded := decode_piece_config(encoded)
+    ok, decoded := decode_piece_config(encoded)
+    testing.expect_value(t, ok, true)
 
     for i in 0 ..< MAX_PIECES {
         testing.expect_value(t, decoded[i], pieces[i])
@@ -387,7 +419,8 @@ import_export_round_trip_multiple_pieces :: proc(t: ^testing.T) {
     }
 
     encoded := encode_piece_config(pieces)
-    decoded := decode_piece_config(encoded)
+    ok, decoded := decode_piece_config(encoded)
+    testing.expect_value(t, ok, true)
 
     for i in 0 ..< MAX_PIECES {
         testing.expect_value(t, decoded[i], pieces[i])
@@ -408,9 +441,10 @@ import_export_string_round_trip :: proc(t: ^testing.T) {
     }
 
     encoded := encode_piece_config_to_string(pieces)
-    decoded := decode_string_to_piece_config(encoded)
+    ok, decoded := decode_string_to_piece_config(encoded)
+    testing.expect_value(t, ok, true)
 
     for i in 0 ..< MAX_PIECES {
-	testing.expect_value(t, decoded[i], pieces[i])
+        testing.expect_value(t, decoded[i], pieces[i])
     }
 }
