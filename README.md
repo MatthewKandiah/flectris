@@ -17,3 +17,5 @@ Tetris but you can pick your tileset.
 - save move history and view / validate replay
 - rebind controls
 - edit grid ghost tile and rot centre on hover
+- add backgrounds
+- polish assets
