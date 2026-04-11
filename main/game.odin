@@ -5,6 +5,8 @@ import "core:math/rand"
 import "core:mem"
 import "core:strings"
 import "vendor:glfw"
+import "vendor:miniaudio"
+import "ma"
 
 GRID_WIDTH :: 10
 GRID_HEIGHT :: 20
@@ -337,6 +339,25 @@ edit_screen_handle_event :: proc(game: ^Game, event: Event) {
     }
 }
 
+play_sound :: proc(file: cstring) {
+    res := miniaudio.engine_play_sound(&gc.sound_engine, file, nil)
+    if ma.is_not_success(res) {
+	ma.fatal("failed to play sound", file)
+    }
+}
+
+play_piece_move_sound :: proc() {
+    play_sound("./assets/boop.wav")
+}
+
+play_piece_lock_sound :: proc() {
+    play_sound("./assets/boop_low.wav")
+}
+
+play_piece_clear_sound :: proc() {
+    play_sound("./assets/boop_high.wav")
+}
+
 game_screen_handle_event :: proc(game: ^Game, event: Event) {
     game_state := &game.state.(GameState)
     switch event.source {
@@ -350,18 +371,26 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
             } else if (key_event.type == .Press && key_event.char == .Escape) {
                 exit_to_menu(game)
             } else if (key_event.type == .Press && key_event.char == .Left) {
-                update_active_piece_position(game_state, -1, 0)
+                if !update_active_piece_position(game_state, -1, 0) {
+		    play_piece_move_sound()
+		}
             } else if (key_event.type == .Press && key_event.char == .Right) {
-                update_active_piece_position(game_state, 1, 0)
+                if !update_active_piece_position(game_state, 1, 0) {
+		    play_piece_move_sound()
+		}
             } else if (key_event.type == .Press && key_event.char == .Down) {
-                update_active_piece_position(game_state, 0, -1)
+                if !update_active_piece_position(game_state, 0, -1) {
+		    play_piece_move_sound()
+		}
             } else if (key_event.type == .Press && key_event.char == .Up) {
                 for !update_active_piece_position(game_state, 0, -1) {}
                 deactivate_piece(game_state)
             } else if (key_event.type == .Press && key_event.char == .S) {
                 rotate_active_piece(game_state, .ANTICLOCKWISE)
+		play_piece_move_sound()
             } else if (key_event.type == .Press && key_event.char == .T) {
                 rotate_active_piece(game_state, .CLOCKWISE)
+		play_piece_move_sound()
             }
         }
     case .Mouse:
@@ -623,6 +652,8 @@ game_update :: proc(game: ^Game) {
         {
             game_state := &game.state.(GameState)
 
+	    will_play_sound := !game_state.has_active_piece
+
             // spawn piece if needed
             if !game_state.has_lost && !game_state.has_active_piece {
                 replace_active_piece_with_next(game_state)
@@ -671,6 +702,14 @@ game_update :: proc(game: ^Game) {
             }
 
             update_score(game_state, filled_line_count)
+
+	    if will_play_sound {
+		if filled_line_count != 0 {
+		    play_piece_clear_sound()
+		} else {
+		    play_piece_lock_sound()
+		}
+	    }
 
             // check for level up
             game_state.level_lines_cleared += filled_line_count

@@ -105,12 +105,6 @@ main :: proc() {
 	if ma.is_not_success(result) {
 	    ma.fatal("failed to initialise engine")
 	}
-
-	// example boop
-	play_res := miniaudio.engine_play_sound(&gc.sound_engine, "./assets/boop.wav", nil);
-	if ma.is_not_success(play_res) {
-	    ma.fatal("failed to play sound")
-	}
     }
 
     renderer := init_renderer()
