@@ -5,8 +5,10 @@ import "core:fmt"
 import "core:math/linalg/glsl"
 import "core:time"
 import "vendor:glfw"
+import "vendor:miniaudio"
 import "vendor:vulkan"
 import "vk"
+import "ma"
 
 WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 480
@@ -27,6 +29,7 @@ GlobalContext :: struct {
     vk_instance:    vulkan.Instance,
     surface_extent: vulkan.Extent2D,
     cursor_pos:     Pos,
+    sound_engine:      miniaudio.engine,
 }
 gc: GlobalContext
 
@@ -97,6 +100,19 @@ main :: proc() {
         glfw.SetKeyCallback(gc.window, key_callback)
     }
 
+    {     // initialise sound player
+	result := miniaudio.engine_init(nil, &gc.sound_engine)
+	if ma.is_not_success(result) {
+	    ma.fatal("failed to initialise engine")
+	}
+
+	// example boop
+	play_res := miniaudio.engine_play_sound(&gc.sound_engine, "./assets/boop.wav", nil);
+	if ma.is_not_success(play_res) {
+	    ma.fatal("failed to play sound")
+	}
+    }
+
     renderer := init_renderer()
     game := init_game()
     stopwatch := time.Stopwatch{}
@@ -140,8 +156,8 @@ get_proc_address :: proc(p: rawptr, name: cstring) {
 mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32) {
     context = runtime.default_context()
     if (button != glfw.MOUSE_BUTTON_LEFT && button != glfw.MOUSE_BUTTON_RIGHT) {
-	fmt.println("skipped mouse input")
-	return
+        fmt.println("skipped mouse input")
+        return
     }
     event_type: EventType = .Press if action == glfw.PRESS else .Release
     mouse_button: MouseButton = .Left if button == glfw.MOUSE_BUTTON_LEFT else .Right
