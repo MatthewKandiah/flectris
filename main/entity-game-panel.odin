@@ -4,13 +4,22 @@ GamePanelEntityData :: struct {
     score:       int,
     next_piece:  Piece,
     saved_piece: Piece,
+    has_lost:    bool,
 }
 
-game_panel_entity :: proc(pos: Pos, dim: Dim, score: int, next_piece: Piece, saved_piece: Piece) -> Entity {
+game_panel_entity :: proc(
+    pos: Pos,
+    dim: Dim,
+    score: int,
+    next_piece: Piece,
+    saved_piece: Piece,
+    has_lost: bool,
+) -> Entity {
     data := GamePanelEntityData {
         score       = score,
         next_piece  = next_piece,
         saved_piece = saved_piece,
+        has_lost    = has_lost,
     }
     return Entity{pos = pos, dim = dim, type = .GamePanel, data = data}
 }
@@ -34,35 +43,54 @@ draw_game_panel :: proc(entity: Entity) {
     }
     draw_number(data.score, 7, score_pos, score_dim, UI_TEXT_Z)
 
-    available_grids_height := entity.dim.h - score_dim.h - (4 * panel_top_bot_margin)
-    max_pieces_fit := available_grids_height >= available_width * 2
-    piece_grid_size := available_width if max_pieces_fit else available_grids_height / 2
-    piece_pos_x := entity.pos.x + panel_left_right_margin if max_pieces_fit else entity.pos.x + (entity.dim.w - piece_grid_size) / 2
+    if data.has_lost {
+        game_over_dim := score_dim
+        game_over_pos := Pos {
+            x = score_pos.x,
+            y = score_pos.y - game_over_dim.h - panel_top_bot_margin,
+        }
+        game_over_str := "GAME OVER"
+        draw_string(transmute([]u8)game_over_str, game_over_pos, game_over_dim, UI_TEXT_Z)
 
-    piece_dim := Dim {
-        w = piece_grid_size,
-        h = piece_grid_size,
+        exit_dim := score_dim
+        exit_pos := Pos {
+            x = game_over_pos.x,
+            y = game_over_pos.y - exit_dim.h - panel_top_bot_margin,
+        }
+        exit_str := "ESC TO EXIT"
+        draw_string(transmute([]u8)exit_str, exit_pos, exit_dim, UI_TEXT_Z)
+    } else {
+        available_grids_height := entity.dim.h - score_dim.h - (4 * panel_top_bot_margin)
+        max_pieces_fit := available_grids_height >= available_width * 2
+        piece_grid_size := available_width if max_pieces_fit else available_grids_height / 2
+        piece_pos_x :=
+            entity.pos.x + panel_left_right_margin if max_pieces_fit else entity.pos.x + (entity.dim.w - piece_grid_size) / 2
+
+        piece_dim := Dim {
+            w = piece_grid_size,
+            h = piece_grid_size,
+        }
+        next_piece_pos := Pos {
+            x = piece_pos_x,
+            y = score_pos.y - panel_top_bot_margin - piece_dim.h,
+        }
+        saved_piece_pos := Pos {
+            x = piece_pos_x,
+            y = next_piece_pos.y - panel_top_bot_margin - piece_dim.h,
+        }
+        draw_grid_cells(
+            next_piece_pos,
+            piece_dim,
+            GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
+            data.next_piece.filled[:],
+            UI_TEXT_Z,
+        )
+        draw_grid_cells(
+            saved_piece_pos,
+            piece_dim,
+            GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
+            data.saved_piece.filled[:],
+            UI_TEXT_Z,
+        )
     }
-    next_piece_pos := Pos {
-        x = piece_pos_x,
-        y = score_pos.y - panel_top_bot_margin - piece_dim.h,
-    }
-    saved_piece_pos := Pos {
-        x = piece_pos_x,
-        y = next_piece_pos.y - panel_top_bot_margin - piece_dim.h,
-    }
-    draw_grid_cells(
-        next_piece_pos,
-        piece_dim,
-        GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
-        data.next_piece.filled[:],
-        UI_TEXT_Z,
-    )
-    draw_grid_cells(
-        saved_piece_pos,
-        piece_dim,
-        GridDim{w = PIECE_WIDTH, h = PIECE_HEIGHT},
-        data.saved_piece.filled[:],
-        UI_TEXT_Z,
-    )
 }

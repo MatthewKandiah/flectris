@@ -4,9 +4,9 @@ import "core:fmt"
 import "core:math/rand"
 import "core:mem"
 import "core:strings"
+import "ma"
 import "vendor:glfw"
 import "vendor:miniaudio"
-import "ma"
 
 GRID_WIDTH :: 10
 GRID_HEIGHT :: 20
@@ -68,7 +68,14 @@ game_screen_populate_entities :: proc(game: ^Game) {
     }
 
     entity_push(
-        game_panel_entity(panel_pos, panel_dim, game_state.score, game_state.next_piece, game_state.saved_piece),
+        game_panel_entity(
+            panel_pos,
+            panel_dim,
+            game_state.score,
+            game_state.next_piece,
+            game_state.saved_piece,
+            game_state.has_lost,
+        ),
     )
 
     grid_pos, grid_dim := get_fitted_grid_pos_dim(GridDim{w = GRID_WIDTH, h = GRID_HEIGHT}, panel_dim.w)
@@ -342,7 +349,7 @@ edit_screen_handle_event :: proc(game: ^Game, event: Event) {
 play_sound :: proc(file: cstring) {
     res := miniaudio.engine_play_sound(&gc.sound_engine, file, nil)
     if ma.is_not_success(res) {
-	ma.fatal("failed to play sound", file)
+        ma.fatal("failed to play sound", file)
     }
 }
 
@@ -358,12 +365,22 @@ play_piece_clear_sound :: proc() {
     play_sound("./assets/boop_high.wav")
 }
 
+play_game_over_sound :: proc() {
+    play_sound("./assets/crunch.wav")
+}
+
 game_screen_handle_event :: proc(game: ^Game, event: Event) {
     game_state := &game.state.(GameState)
     switch event.source {
     case .Keyboard:
         {
             key_event := event.data.(KeyboardEvent)
+            if game_state.has_lost {
+                if (key_event.type == .Press && key_event.char == .Escape) {
+                    exit_to_menu(game)
+                }
+                return
+            }
             if (key_event.type == .Press && key_event.char == .Space) {
                 if game_state.can_save_piece {
                     save_piece(game_state)
@@ -372,25 +389,25 @@ game_screen_handle_event :: proc(game: ^Game, event: Event) {
                 exit_to_menu(game)
             } else if (key_event.type == .Press && key_event.char == .Left) {
                 if !update_active_piece_position(game_state, -1, 0) {
-		    play_piece_move_sound()
-		}
+                    play_piece_move_sound()
+                }
             } else if (key_event.type == .Press && key_event.char == .Right) {
                 if !update_active_piece_position(game_state, 1, 0) {
-		    play_piece_move_sound()
-		}
+                    play_piece_move_sound()
+                }
             } else if (key_event.type == .Press && key_event.char == .Down) {
                 if !update_active_piece_position(game_state, 0, -1) {
-		    play_piece_move_sound()
-		}
+                    play_piece_move_sound()
+                }
             } else if (key_event.type == .Press && key_event.char == .Up) {
                 for !update_active_piece_position(game_state, 0, -1) {}
                 deactivate_piece(game_state)
             } else if (key_event.type == .Press && key_event.char == .S) {
                 rotate_active_piece(game_state, .ANTICLOCKWISE)
-		play_piece_move_sound()
+                play_piece_move_sound()
             } else if (key_event.type == .Press && key_event.char == .T) {
                 rotate_active_piece(game_state, .CLOCKWISE)
-		play_piece_move_sound()
+                play_piece_move_sound()
             }
         }
     case .Mouse:
@@ -652,11 +669,15 @@ game_update :: proc(game: ^Game) {
     case .GAME:
         {
             game_state := &game.state.(GameState)
+            will_play_sound := !game_state.has_active_piece
 
-	    will_play_sound := !game_state.has_active_piece
+            // handle game over
+            if game_state.has_lost {
+                return
+            }
 
             // spawn piece if needed
-            if !game_state.has_lost && !game_state.has_active_piece {
+            if !game_state.has_active_piece {
                 replace_active_piece_with_next(game_state)
                 game_state.active_piece_position = GridPos {
                     x = GRID_WIDTH / 2 - 1,
@@ -704,13 +725,13 @@ game_update :: proc(game: ^Game) {
 
             update_score(game_state, filled_line_count)
 
-	    if will_play_sound {
-		if filled_line_count != 0 {
-		    play_piece_clear_sound()
-		} else {
-		    play_piece_lock_sound()
-		}
-	    }
+            if will_play_sound {
+                if filled_line_count != 0 {
+                    play_piece_clear_sound()
+                } else {
+                    play_piece_lock_sound()
+                }
+            }
 
             // check for level up
             game_state.level_lines_cleared += filled_line_count

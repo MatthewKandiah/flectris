@@ -216,8 +216,9 @@ deactivate_piece :: proc(gs: ^GameState) {
         if val == 0 {continue}
         x := gs.active_piece_position.x + (cast(i32)idx % PIECE_WIDTH)
         y := gs.active_piece_position.y + (cast(i32)idx / PIECE_WIDTH)
-        if y >= GRID_HEIGHT {
+        if y  >= GRID_HEIGHT {
             gs.has_lost = true
+	    play_game_over_sound()
         } else {
             gs.grid[y * GRID_WIDTH + x] = val
         }
