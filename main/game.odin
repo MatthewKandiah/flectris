@@ -422,6 +422,7 @@ exit_on_click :: proc(_: ^Game) {
 
 exit_to_menu :: proc(game: ^Game) {
     game.screen = .MAIN_MENU
+    game.state = main_menu_state(game.global.piece_buffer)
 }
 
 edit_on_click :: proc(game: ^Game) {
