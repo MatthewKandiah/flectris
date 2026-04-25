@@ -12,3 +12,6 @@ Tetris but you can pick your tileset.
 - edit grid ghost tile and rot centre on hover
 - add backgrounds
 - polish assets
+
+## Build
+- build with `odin` version nightly 2025-06-02 and `glslc` from `vulkansdk` version 1.4.313.0  
